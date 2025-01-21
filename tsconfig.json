@@ -1,25 +1,19 @@
 {
 	"compilerOptions": {
-		"esModuleInterop": true,
-		"experimentalDecorators": true,
-		"forceConsistentCasingInFileNames": true,
-		"isolatedModules": true,
-		"lib": ["es2022", "esnext.disposable", "DOM"],
-		"module": "esnext",
-		"moduleResolution": "Bundler",
-		"noFallthroughCasesInSwitch": true,
-		"noImplicitOverride": true,
-		"noImplicitReturns": true,
-		"noUnusedLocals": false,
-		"resolveJsonModule": true,
-		"rootDir": ".",
-		"skipLibCheck": true,
+		"target": "es2020",
+		"lib": ["es2020"],
+		"module": "commonjs",
+		"moduleResolution": "node",
 		"sourceMap": true,
 		"strict": true,
-		"target": "es2022",
-		"useDefineForClassFields": true,
-		"useUnknownInCatchVariables": false
+		"outDir": "dist",
+		"rootDir": "src",
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+		"resolveJsonModule": true,
+		"jsx": "react-jsx",
+		"types": ["jest", "@jest/globals"]
 	},
-	"include": ["src/**/*", "scripts/**/*", ".changeset/**/*"],
-	"exclude": ["node_modules", ".vscode-test", "webview-ui"]
+	"include": ["src"],
+	"exclude": ["node_modules", "dist"]
 }

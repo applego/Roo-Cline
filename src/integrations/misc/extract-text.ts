@@ -20,7 +20,8 @@ export async function extractTextFromFile(filePath: string): Promise<string> {
 		case ".ipynb":
 			return extractTextFromIPYNB(filePath)
 		default:
-			const isBinary = await isBinaryFile(filePath).catch(() => false)
+			const fileBuffer = await fs.readFile(filePath)
+			const isBinary = await isBinaryFile(fileBuffer).catch(() => false)
 			if (!isBinary) {
 				return addLineNumbers(await fs.readFile(filePath, "utf8"))
 			} else {
