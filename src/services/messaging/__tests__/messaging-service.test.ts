@@ -3,7 +3,7 @@
 import { describe, expect, it, jest, beforeEach } from "@jest/globals"
 import { MessagingService } from "../messaging-service"
 import { CommunicationHandler } from "../../../types"
-import { Message } from "../../../types/messaging"
+import { Message, MessageHandler } from "../../../types/messaging"
 
 describe("MessagingService", () => {
 	let messagingService: MessagingService
@@ -41,7 +41,7 @@ describe("MessagingService", () => {
 	describe("Message Handling", () => {
 		it("should add and remove message handlers", () => {
 			const handler = jest.fn()
-			const handlerId = messagingService.addHandler(handler)
+			const handlerId = messagingService.addHandler(handler as unknown as MessageHandler)
 
 			expect(handler).not.toHaveBeenCalled()
 			expect(typeof handlerId).toBe("string")
@@ -54,8 +54,8 @@ describe("MessagingService", () => {
 			const handler1 = jest.fn()
 			const handler2 = jest.fn()
 
-			messagingService.addHandler(handler1)
-			messagingService.addHandler(handler2)
+			messagingService.addHandler(handler1 as unknown as MessageHandler)
+			messagingService.addHandler(handler2 as unknown as MessageHandler)
 
 			// Simulate receiving a message
 			const onMessageCallback = mockCommunicationHandler.onMessage.mock.calls[0][0]

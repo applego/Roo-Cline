@@ -42,16 +42,16 @@ git fetch upstream
 
 5. パッケージをインストールする
 	•	Roo Cline の大元の package.json もありますが、VS Code 拡張の依存モジュールと Reactアプリの依存モジュールは別々です。
-	•	ルートディレクトリで npm install（依存がある程度インストールされる）
-	•	webview-ui ディレクトリに移動して npm install
-（あるいは npm run install:all というスクリプトで両方インストールするケースも）
+	•	ルートディレクトリで pnpm install（依存がある程度インストールされる）
+	•	webview-ui ディレクトリに移動して pnpm install
+（あるいは pnpm run install:all というスクリプトで両方インストールするケースも）
 
 cd webview-ui
-npm install
+pnpm install
 cd ..
 
 6. webview-ui のReactアプリを“スタンドアロン”で起動確認してみる
-	•	webview-ui ディレクトリで npm start すると、通常のReact開発サーバが立ち上がり（localhost:3000など）アクセスできます。
+	•	webview-ui ディレクトリで pnpm start すると、通常のReact開発サーバが立ち上がり（localhost:3000など）アクセスできます。
 	•	ただしこの段階では、vscode.postMessage が呼ばれたり、acquireVsCodeApi が無い環境で例外が出るかもしれません（ブラウザコンソールにエラーが出るなど）。
 
 6-1. vscode関連の呼び出しの除去 / 置換
@@ -81,7 +81,7 @@ export function postMessage(type: string, payload: any) {
 	•	webview-ui/src/utils/vscode.ts などで typeof acquireVsCodeApi === 'function' かどうかを確認している箇所があるはず。そこを “単に常にundefined” にしておくか、ビルドエラー回避する程度でもOKです。
 
 7. スタンドアロンビルドを試す
-	•	上記の修正が済んだら（あるいは仮でも済ませたら） webview-ui ディレクトリで npm run build を実行。
+	•	上記の修正が済んだら（あるいは仮でも済ませたら） webview-ui ディレクトリで pnpm run build を実行。
 	•	正常にビルドが通れば、webview-ui/build 配下に 静的なHTML/CSS/JS が生成されます。
 	•	これを your-website.com/roo-cline-ui/ のようなところへ配置すれば、Reactアプリとしてブラウザから直接アクセスできるように。
 

@@ -91,7 +91,14 @@ const ApiOptions = ({ apiErrorMessage, modelIdErrorMessage }: ApiOptionsProps) =
 		} else if (message.type === "lmStudioModels" && message.lmStudioModels) {
 			setLmStudioModels(message.lmStudioModels)
 		} else if (message.type === "vsCodeLmModels" && message.vsCodeLmModels) {
-			setVsCodeLmModels(message.vsCodeLmModels)
+			setVsCodeLmModels(
+				message.vsCodeLmModels.map((m) => ({
+					vendor: m.vendor || "",
+					family: m.family || "",
+					version: m.version || "",
+					id: m.id || "",
+				})),
+			)
 		}
 	}, [])
 	useEvent("message", handleMessage)

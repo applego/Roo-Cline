@@ -38,27 +38,27 @@ Complete Example:
 Original file (with line numbers):
 \`\`\`
 1 | import { Logger } from '../logger';
-2 | 
+2 |
 3 | function calculateTotal(items: number[]): number {
 4 |   return items.reduce((sum, item) => {
 5 |     return sum + item;
 6 |   }, 0);
 7 | }
-8 | 
+8 |
 9 | export { calculateTotal };
 \`\`\`
 
 After applying the diff, the file would look like:
 \`\`\`
 1 | import { Logger } from '../logger';
-2 | 
+2 |
 3 | function calculateTotal(items: number[]): number {
 4 |   const total = items.reduce((sum, item) => {
 5 |     return sum + item * 1.1;  // Add 10% markup
 6 |   }, 0);
 7 |   return Math.round(total * 100) / 100;  // Round to 2 decimal places
 8 | }
-9 | 
+9 |
 10 | export { calculateTotal };
 \`\`\`
 
@@ -68,7 +68,7 @@ Diff to modify the file:
 +++ src/utils/helper.ts
 @@ -1,9 +1,10 @@
  import { Logger } from '../logger';
- 
+
  function calculateTotal(items: number[]): number {
 -  return items.reduce((sum, item) => {
 -    return sum + item;
@@ -77,7 +77,7 @@ Diff to modify the file:
    }, 0);
 +  return Math.round(total * 100) / 100;  // Round to 2 decimal places
  }
- 
+
  export { calculateTotal };
 \`\`\`
 
@@ -127,7 +127,7 @@ Your diff here
 		} catch (error) {
 			return {
 				success: false,
-				error: `Error applying unified diff: ${error.message}`,
+				error: `Error applying unified diff: ${error instanceof Error ? error.message : String(error)}`,
 				details: {
 					searchContent: diffContent,
 				},

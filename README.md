@@ -60,12 +60,12 @@ To contribute to the project, start by exploring [open issues](https://github.co
 1. Install dependencies:
 
     ```bash
-    npm run install:all
+    pnpm run install:all
     ```
 
 2. Build the VSIX file:
     ```bash
-    npm run build
+    pnpm run build
     ```
 3. The new VSIX file will be created in the `bin/` directory
 4. Install the extension from the VSIX file as described below:
@@ -86,7 +86,7 @@ To contribute to the project, start by exploring [open issues](https://github.co
 We use [changesets](https://github.com/changesets/changesets) for versioning and publishing this package. To make changes:
 
 1. Create a PR with your changes
-2. Create a new changeset by running `npm run changeset`
+2. Create a new changeset by running `pnpm run changeset`
     - Select the appropriate kind of change - `patch` for bug fixes, `minor` for new features, or `major` for breaking changes
     - Write a clear description of your changes that will be included in the changelog
 3. Get the PR approved and pass all checks
@@ -186,7 +186,7 @@ All changes made by Cline are recorded in your file's Timeline, providing an eas
 
 With Claude 3.5 Sonnet's new [Computer Use](https://www.anthropic.com/news/3-5-models-and-computer-use) capability, Cline can launch a browser, click elements, type text, and scroll, capturing screenshots and console logs at each step. This allows for interactive debugging, end-to-end testing, and even general web use! This gives him autonomy to fixing visual bugs and runtime issues without you needing to handhold and copy-pasting error logs yourself.
 
-Try asking Cline to "test the app", and watch as he runs a command like `npm run dev`, launches your locally running dev server in a browser, and performs a series of tests to confirm that everything works. [See a demo here.](https://x.com/sdrzn/status/1850880547825823989)
+Try asking Cline to "test the app", and watch as he runs a command like `pnpm run dev`, launches your locally running dev server in a browser, and performs a series of tests to confirm that everything works. [See a demo here.](https://x.com/sdrzn/status/1850880547825823989)
 
 <!-- Transparent pixel to create line break after floating image -->
 
@@ -235,7 +235,7 @@ To contribute to the project, start by exploring [open issues](https://github.co
     ```
 3. Install the necessary dependencies for the extension and webview-gui:
     ```bash
-    npm run install:all
+    pnpm run install:all
     ```
 4. Launch by pressing `F5` (or `Run`->`Start Debugging`) to open a new VSCode window with the extension loaded. (You may need to install the [esbuild problem matchers extension](https://marketplace.visualstudio.com/items?itemName=connor4312.esbuild-problem-matchers) if you run into issues building the project.)
 

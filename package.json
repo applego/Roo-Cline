@@ -146,8 +146,9 @@
 						"type": "string"
 					},
 					"default": [
-						"npm test",
-						"npm install",
+						"pnpm test",
+						"pnpm install",
+						"pnpm dev",
 						"tsc",
 						"git log",
 						"git diff",
@@ -173,27 +174,27 @@
 		}
 	},
 	"scripts": {
-		"start": "react-app-rewired start",
+		"start": "pnpm run start:webview",
 		"build": "react-app-rewired build",
 		"test": "react-app-rewired test",
 		"eject": "react-scripts eject",
-		"build:webview": "cd webview-ui && npm run build",
+		"build:webview": "cd webview-ui && pnpm run build",
 		"changeset": "changeset",
 		"check-types": "tsc --noEmit",
-		"compile": "npm run check-types && npm run lint && node esbuild.js",
+		"compile": "pnpm run check-types && pnpm run lint && node esbuild.js",
 		"compile-tests": "tsc -p . --outDir out",
-		"install:all": "npm install && cd webview-ui && npm install",
-		"lint": "eslint src --ext ts && npm run lint --prefix webview-ui",
-		"package": "npm run build:webview && npm run check-types && npm run lint && node esbuild.js --production",
-		"pretest": "npm run compile-tests && npm run compile && npm run lint",
-		"start:webview": "cd webview-ui && npm run start",
-		"test:webview": "cd webview-ui && npm run test",
+		"install:all": "pnpm install && cd webview-ui && pnpm install",
+		"lint": "eslint src --ext ts && pnpm -F webview-ui run lint",
+		"package": "pnpm run build:webview && pnpm run check-types && pnpm run lint && node esbuild.js --production",
+		"pretest": "pnpm run compile-tests && pnpm run compile && pnpm run lint",
+		"start:webview": "cd webview-ui && pnpm run start",
+		"test:webview": "cd webview-ui && pnpm run test",
 		"test:extension": "vscode-test",
 		"prepare": "husky",
 		"publish:marketplace": "vsce publish && ovsx publish",
-		"publish": "npm run build && changeset publish && npm install --package-lock-only",
-		"version-packages": "changeset version && npm install --package-lock-only",
-		"vscode:prepublish": "npm run package",
+		"publish": "pnpm run build && changeset publish && pnpm install --package-lock-only",
+		"version-packages": "changeset version && pnpm install --package-lock-only",
+		"vscode:prepublish": "pnpm run package",
 		"vsix": "mkdir -p bin && npx vsce package --out bin",
 		"watch": "npm-run-all -p watch:*",
 		"watch:esbuild": "node esbuild.js --watch",
@@ -201,6 +202,14 @@
 		"watch-tests": "tsc -p . -w --outDir out",
 		"test:watch": "react-app-rewired test --watch",
 		"test:coverage": "react-app-rewired test --coverage"
+	},
+	"pnpm": {
+		"peerDependencyRules": {
+			"ignoreMissing": [
+				"react",
+				"react-dom"
+			]
+		}
 	},
 	"devDependencies": {
 		"@changesets/cli": "^2.27.10",
@@ -233,7 +242,7 @@
 		"prettier": "^3.4.2",
 		"react-app-rewired": "^2.2.1",
 		"ts-jest": "^29.2.5",
-		"typescript": "^5.4.5"
+		"typescript": "5.5.3"
 	},
 	"dependencies": {
 		"@anthropic-ai/bedrock-sdk": "^0.10.2",

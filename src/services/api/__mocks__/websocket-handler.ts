@@ -21,8 +21,10 @@ export class WebSocketHandler {
 		this._messageHandlers.forEach((handler) => {
 			handler({
 				type: "response",
-				id: message.id,
-				content: { success: true },
+				payload: {
+					id: message.payload?.id,
+					success: true,
+				},
 			})
 		})
 		return Promise.resolve()
@@ -33,7 +35,7 @@ export class WebSocketHandler {
 		// 初期メッセージを送信
 		handler({
 			type: "notification",
-			content: { message: "Connected to server" },
+			payload: { message: "Connected to server" },
 		})
 	}
 

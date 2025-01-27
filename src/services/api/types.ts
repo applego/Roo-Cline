@@ -1,18 +1,22 @@
+import { WebviewMessage } from "../../types/messages"
+
 export interface CommunicationHandler {
-	send: (message: any) => Promise<void>
-	onMessage: (callback: (message: any) => void) => void
-	_messageCallback: (message: any) => void
-	_isPolling: boolean
-	_lastMessageId: string
-	_url: string
-	_ws: WebSocket | null
-	_reconnectAttempts: number
-	_maxReconnectAttempts: number
-	_reconnectDelay: number
-	_isConnected: boolean
-	_pendingMessages: any[]
-	connect: () => Promise<void>
-	disconnect: () => void
+	send: (message: WebviewMessage) => Promise<void>
+	onMessage: () => void
+	messageCallback?: () => void
+}
+
+export interface RestHandler extends CommunicationHandler {
+	messageCallback: () => void
+	isPolling: boolean
+	lastMessageId: string | null
+	url: string
+	headers: Record<string, string>
+	pollInterval: number
+	retryCount: number
+	maxRetries: number
+	retryDelay: number
+	disposed: boolean
 }
 
 declare global {

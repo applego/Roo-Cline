@@ -1,4 +1,4 @@
-import React from "react"
+import React, { ChangeEvent } from "react"
 
 export const VSCodeButton: React.FC<{
 	appearance?: "primary" | "secondary"
@@ -11,40 +11,50 @@ export const VSCodeButton: React.FC<{
 	</button>
 )
 
-export const VSCodeTextArea: React.FC<{
+interface TextAreaProps {
 	value?: string
-	onChange?: (event: { target: { value: string } }) => void
+	onChange?: (event: ChangeEvent<HTMLTextAreaElement>) => void
 	placeholder?: string
 	disabled?: boolean
 	rows?: number
-}> = ({ value, onChange, placeholder, disabled, rows }) => (
-	<textarea value={value} onChange={onChange} placeholder={placeholder} disabled={disabled} rows={rows} />
-)
+}
 
-export const VSCodeDropdown: React.FC<{
+export function TextArea({ value, onChange, placeholder, disabled, rows }: TextAreaProps) {
+	return <textarea value={value} onChange={onChange} placeholder={placeholder} disabled={disabled} rows={rows} />
+}
+
+interface DropdownProps {
 	value?: string
-	onChange?: (event: { target: { value: string } }) => void
+	onChange?: (event: ChangeEvent<HTMLSelectElement>) => void
 	disabled?: boolean
 	children?: React.ReactNode
-}> = ({ value, onChange, disabled, children }) => (
-	<select value={value} onChange={onChange} disabled={disabled}>
-		{children}
-	</select>
-)
+}
+
+export function Dropdown({ value, onChange, disabled, children }: DropdownProps) {
+	return (
+		<select value={value} onChange={onChange} disabled={disabled}>
+			{children}
+		</select>
+	)
+}
 
 export const VSCodeOption: React.FC<{
 	value: string
 	children?: React.ReactNode
 }> = ({ value, children }) => <option value={value}>{children}</option>
 
-export const VSCodeCheckbox: React.FC<{
+interface CheckboxProps {
 	checked?: boolean
-	onChange?: (event: { target: { checked: boolean } }) => void
+	onChange?: (event: ChangeEvent<HTMLInputElement>) => void
 	disabled?: boolean
 	children?: React.ReactNode
-}> = ({ checked, onChange, disabled, children }) => (
-	<label>
-		<input type="checkbox" checked={checked} onChange={onChange} disabled={disabled} />
-		{children}
-	</label>
-)
+}
+
+export function Checkbox({ checked, onChange, disabled, children }: CheckboxProps) {
+	return (
+		<label>
+			<input type="checkbox" checked={checked} onChange={onChange} disabled={disabled} />
+			{children}
+		</label>
+	)
+}

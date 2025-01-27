@@ -1,18 +1,17 @@
 {
 	"compilerOptions": {
-		"target": "es2020",
-		"lib": ["es2020"],
+		"target": "ES2021",
+		"lib": ["ES2021", "DOM", "DOM.Iterable"],
 		"module": "commonjs",
 		"moduleResolution": "node",
 		"sourceMap": true,
 		"strict": true,
-		"outDir": "dist",
+		"outDir": "out",
 		"rootDir": "src",
-		"esModuleInterop": true,
 		"skipLibCheck": true,
-		"resolveJsonModule": true,
-		"jsx": "react-jsx",
-		"types": ["jest", "@jest/globals"]
+		"esModuleInterop": true,
+		"types": ["jest", "@jest/globals", "node", "mocha"],
+		"jsx": "react-jsx"
 	},
 	"include": ["src"],
 	"exclude": ["node_modules", "dist"]

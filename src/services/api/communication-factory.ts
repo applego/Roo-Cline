@@ -1,65 +1,64 @@
-import { CommunicationHandler } from "../../types"
+import { CommunicationHandler, RestHandler } from "./types"
+import { WebviewMessage } from "../../types/messages"
 
 export class CommunicationFactory {
 	private currentHandler: CommunicationHandler | null = null
-	private _messageCallback: (message: any) => void = () => {}
 
 	constructor() {
 		if (typeof window !== "undefined" && window.acquireVsCodeApi) {
 			// VSCode環境での処理
 			const vscode = window.acquireVsCodeApi()
 			this.currentHandler = {
-				send: async (message: any) => {
+				messageCallback: () => {},
+				isPolling: false,
+				lastMessageId: null,
+				url: "",
+				headers: {},
+				pollInterval: 1000,
+				retryCount: 0,
+				maxRetries: 3,
+				retryDelay: 1000,
+				disposed: false,
+				send: (message: WebviewMessage) => {
 					vscode.postMessage(message)
+					return Promise.resolve()
 				},
-				onMessage: (callback: (message: any) => void) => {
-					window.addEventListener("message", (event) => {
-						callback(event.data)
-					})
+				onMessage: () => {
+					// VSCode specific message handling
 				},
-				_messageCallback: this._messageCallback,
-				_isPolling: false,
-				_lastMessageId: "",
-				_url: "",
-				_ws: null,
-				_reconnectAttempts: 0,
-				_maxReconnectAttempts: 5,
-				_reconnectDelay: 1000,
-				_isConnected: false,
-				_pendingMessages: [],
-				connect: async () => {},
-				disconnect: () => {},
-			}
+			} as RestHandler
+
+			window.addEventListener("message", (event) => {
+				const message = event.data
+				if (this.currentHandler?.messageCallback) {
+					this.currentHandler.messageCallback()
+				}
+			})
 		} else {
-			// ブラウザ環境での処理
+			console.warn("VSCode API not available")
 			this.currentHandler = {
-				send: async (message: any) => {
+				messageCallback: () => {},
+				isPolling: false,
+				lastMessageId: null,
+				url: "",
+				headers: {},
+				pollInterval: 1000,
+				retryCount: 0,
+				maxRetries: 3,
+				retryDelay: 1000,
+				disposed: false,
+				send: async (message: WebviewMessage) => {
 					console.log("Mock message sent:", message)
 					return Promise.resolve()
 				},
-				onMessage: (callback: (message: any) => void) => {
-					this._messageCallback = callback
+				onMessage: () => {
+					// Mock message handling
 				},
-				_messageCallback: this._messageCallback,
-				_isPolling: false,
-				_lastMessageId: "",
-				_url: "",
-				_ws: null,
-				_reconnectAttempts: 0,
-				_maxReconnectAttempts: 5,
-				_reconnectDelay: 1000,
-				_isConnected: false,
-				_pendingMessages: [],
-				connect: async () => {},
-				disconnect: () => {},
-			}
+			} as RestHandler
 		}
 	}
 
-	getHandler(): CommunicationHandler {
-		if (!this.currentHandler) {
-			throw new Error("No communication handler available")
-		}
+	getHandler(): CommunicationHandler | null {
 		return this.currentHandler
 	}
 }

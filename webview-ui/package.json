@@ -37,7 +37,8 @@
 		"test:watch": "react-app-rewired test --env=jsdom",
 		"test:integration": "cross-env NODE_ENV=test node scripts/test-integration.js",
 		"eject": "react-scripts eject",
-		"copy-shared": "node scripts/copy-shared.js"
+		"copy-shared": "node scripts/copy-shared.js",
+		"lint": "eslint src --ext .ts,.tsx"
 	},
 	"eslintConfig": {
 		"extends": [
