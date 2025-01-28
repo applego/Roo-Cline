@@ -3,6 +3,7 @@
 ## 事前準備
 
 必要なツール:
+
 - Node.js (v18以上)
 - pnpm (v8以上)
 
@@ -22,6 +23,7 @@ pnpm dev
 ```
 
 サーバーが起動したら以下のエンドポイントが利用可能になります：
+
 - WebSocket: `ws://localhost:3001`
 - REST API: `http://localhost:3001`
 
@@ -45,14 +47,16 @@ pnpm start
 1. APIの動作確認:
 
 WebSocketの場合:
+
 ```javascript
 // ブラウザのコンソールで実行
-const ws = new WebSocket('ws://localhost:3001')
-ws.onmessage = (event) => console.log('受信:', JSON.parse(event.data))
-ws.send(JSON.stringify({ type: 'test', text: 'テストメッセージ' }))
+const ws = new WebSocket("ws://localhost:3001")
+ws.onmessage = (event) => console.log("受信:", JSON.parse(event.data))
+ws.send(JSON.stringify({ type: "test", text: "テストメッセージ" }))
 ```
 
 REST APIの場合:
+
 ```bash
 # メッセージの送信
 curl -X POST http://localhost:3001/messages \
@@ -66,6 +70,7 @@ curl http://localhost:3001/messages
 2. フロントエンドの動作確認:
 
 ブラウザで `http://localhost:3000` にアクセスし、以下を確認:
+
 - WebSocket/REST APIの接続状態
 - メッセージの送受信
 - UIコンポーネントの表示
@@ -90,24 +95,29 @@ REACT_APP_POLLING_INTERVAL=1000
 ### デバッグ
 
 1. サーバーサイド:
+
 - ログは標準出力に表示されます
 - `nodemon` により、ファイル変更時に自動で再起動します
 
 2. フロントエンド:
+
 - ブラウザの開発者ツールでコンソールログを確認
 - React Developer Toolsでコンポーネントの状態を確認
 
 ## トラブルシューティング
 
 1. 接続エラーが発生する場合:
+
 - サーバーが起動していることを確認
 - ポート番号が正しいことを確認
 - CORS設定が正しいことを確認
 
 2. ビルドエラーが発生する場合:
+
 - `node_modules` を削除して再インストール
 - TypeScriptの型エラーを確認
 
 3. その他の問題:
+
 - コンソールログで詳細なエラーメッセージを確認
 - 各種設定ファイル (.env, package.json など) の内容を確認
