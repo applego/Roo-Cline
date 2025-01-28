@@ -1,5 +1,6 @@
 import { WebSocketHandler } from "./websocket-handler"
 import { RestHandler } from "./rest-handler"
+import { StandaloneHandler } from "./standalone-handler"
 import { CommunicationConfig, CommunicationHandler } from "./types"
 
 export class CommunicationFactory {
@@ -53,6 +54,14 @@ export class CommunicationFactory {
 
 			case "vscode":
 				this._currentHandler = this._createVSCodeHandler()
+				break
+
+			case "standalone":
+				if (!this._config.wsUrl) {
+					throw new Error("WebSocket URL is required")
+				}
+				const ws = new WebSocket(this._config.wsUrl)
+				this._currentHandler = new StandaloneHandler(ws)
 				break
 
 			default:

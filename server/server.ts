@@ -1,158 +1,102 @@
 import express from "express"
-import { createServer } from "http"
-import { WebSocketServer, WebSocket } from "ws"
 import cors from "cors"
-import { WebviewMessage, WebSocketResponse, RestResponse, ServerConfig } from "./src/types"
-
-const config: ServerConfig = {
-	port: Number(process.env.PORT) || 3002,
-	corsOrigins: process.env.CORS_ORIGINS?.split(",") || ["http://localhost:3000"],
-	maxReconnectAttempts: 5,
-	reconnectDelay: 1000,
-}
+import { WebSocketServerImpl } from "./websocket/websocket-server"
+import { WebSocketMessage } from "./types"
+import { ConfigStore } from "./config/ConfigStore"
+import { McpManager } from "./mcp/McpManager"
+import path from "path"
 
 const app = express()
-const server = createServer(app)
-const wss = new WebSocketServer({ server })
+const port = process.env.PORT ? parseInt(process.env.PORT) : 3000
+const wsPort = process.env.WS_PORT ? parseInt(process.env.WS_PORT) : 3001
 
-// メッセージ保存用の配列
-const messages: WebviewMessage[] = []
-let lastMessageId = 0
-
-// CORS設定
-app.use(
-	cors({
-		origin: config.corsOrigins,
-		methods: ["GET", "POST"],
-	}),
-)
+app.use(cors())
 app.use(express.json())
 
-// REST API エンドポイント
-app.post("/messages", (req, res) => {
+// 静的ファイルの提供（webview-uiのビルド成果物）
+app.use(express.static(path.join(__dirname, "../../webview-ui/build")))
+
+// コンフィグストア
+const configStore = new ConfigStore(process.env.CONFIG_DIR || path.join(__dirname, "../config"))
+
+// MCPマネージャー
+const mcpManager = new McpManager()
+
+// WebSocketサーバーのセットアップ
+const wss = new WebSocketServerImpl(wsPort)
+
+// クライアントからのメッセージを処理
+wss.onMessage(async (message: WebSocketMessage, connection) => {
 	try {
-		const message: WebviewMessage = {
-			...req.body,
-			id: ++lastMessageId,
-			timestamp: new Date().toISOString(),
-		}
-		messages.push(message)
+		switch (message.type) {
+			case "getConfig":
+				const config = await configStore.load()
+				connection.send({
+					type: "config",
+					payload: config,
+				})
+				break
 
-		// WebSocket接続中のクライアントにもブロードキャスト
-		wss.clients.forEach((client) => {
-			if (client.readyState === WebSocket.OPEN) {
-				const response: WebSocketResponse = {
-					success: true,
-					data: message,
+			case "saveConfig":
+				await configStore.save(message.payload)
+				connection.send({
+					type: "configSaved",
+					payload: { success: true },
+				})
+				break
+
+			case "mcpRequest":
+				if (!message.payload?.serverName || !message.payload?.toolName) {
+					throw new Error("Invalid MCP request")
 				}
-				client.send(JSON.stringify(response))
-			}
-		})
+				const result = await mcpManager.callTool(
+					message.payload.serverName,
+					message.payload.toolName,
+					message.payload.arguments,
+				)
+				connection.send({
+					type: "mcpResponse",
+					payload: result,
+				})
+				break
 
-		res.status(200).json({ success: true, data: message })
-	} catch (error) {
-		console.error("Error processing message:", error)
-		res.status(500).json({
-			success: false,
-			error: error instanceof Error ? error.message : "Unknown error",
-		})
-	}
-})
-
-app.get("/messages", (req, res) => {
-	try {
-		const since = Number(req.query.since) || 0
-		const newMessages = messages.filter((m) => (m.id || 0) > since)
-
-		const response: RestResponse = {
-			success: true,
-			data: newMessages,
-			lastId: lastMessageId,
-		}
-
-		res.json(response)
-	} catch (error) {
-		console.error("Error fetching messages:", error)
-		res.status(500).json({
-			success: false,
-			error: error instanceof Error ? error.message : "Unknown error",
-		})
-	}
-})
-
-// WebSocketサーバーの設定
-wss.on("connection", (ws: WebSocket) => {
-	console.log("Client connected")
-
-	// 接続時に最新のメッセージ一覧を送信
-	const response: WebSocketResponse = {
-		success: true,
-		data: {
-			type: "init",
-			messages,
-			lastId: lastMessageId,
-		},
-	}
-	ws.send(JSON.stringify(response))
-
-	ws.on("message", (data: Buffer) => {
-		try {
-			const message: WebviewMessage = JSON.parse(data.toString())
-			message.id = ++lastMessageId
-			message.timestamp = new Date().toISOString()
-			messages.push(message)
-
-			// 他のクライアントにブロードキャスト
-			wss.clients.forEach((client) => {
-				if (client !== ws && client.readyState === WebSocket.OPEN) {
-					const response: WebSocketResponse = {
-						success: true,
-						data: message,
-					}
-					client.send(JSON.stringify(response))
+			case "mcpResourceRequest":
+				if (!message.payload?.serverName || !message.payload?.uri) {
+					throw new Error("Invalid MCP resource request")
 				}
-			})
-		} catch (error) {
-			console.error("Error processing WebSocket message:", error)
-			const errorResponse: WebSocketResponse = {
-				success: false,
-				error: error instanceof Error ? error.message : "Unknown error",
-			}
-			ws.send(JSON.stringify(errorResponse))
+				const resource = await mcpManager.readResource(message.payload.serverName, message.payload.uri)
+				connection.send({
+					type: "mcpResourceResponse",
+					payload: resource,
+				})
+				break
+
+			default:
+				console.warn("Unknown message type:", message.type)
 		}
-	})
-
-	ws.on("error", (error) => {
-		console.error("WebSocket error:", error)
-	})
-
-	ws.on("close", () => {
-		console.log("Client disconnected")
-	})
+	} catch (error) {
+		console.error("Error handling message:", error)
+		connection.send({
+			type: "error",
+			payload: error instanceof Error ? error.message : "Unknown error",
+		})
+	}
 })
 
-// エラーハンドリング
-app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
-	console.error("Server error:", err)
-	res.status(500).json({
-		success: false,
-		error: err.message || "Internal server error",
-	})
+// WebSocket接続のハンドリング
+wss.onConnection((connection) => {
+	console.log(`New WebSocket connection: ${connection.id}`)
 })
 
-// サーバー起動
-server.listen(config.port, () => {
-	console.log(`Server running on port ${config.port}`)
-	console.log(`WebSocket server running on ws://localhost:${config.port}`)
-	console.log(`REST API running on http://localhost:${config.port}`)
-	console.log("CORS origins:", config.corsOrigins)
+// HTTPサーバーの起動
+app.listen(port, () => {
+	console.log(`Server running at http://localhost:${port}`)
+	console.log(`WebSocket server running at ws://localhost:${wsPort}`)
 })
 
-// グレースフルシャットダウン
-process.on("SIGTERM", () => {
-	console.log("SIGTERM received. Closing server...")
-	server.close(() => {
-		console.log("Server closed")
-		process.exit(0)
-	})
+// シャットダウン時のクリーンアップ
+process.on("SIGINT", () => {
+	console.log("Shutting down...")
+	wss.close()
+	process.exit(0)
 })

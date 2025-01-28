@@ -1,82 +1,49 @@
+import { StandaloneMessage, EnhancedWebviewMessage } from "../../types/messages"
+
 export interface WebviewMessage {
-  type: string;
-  text?: string;
-  [key: string]: any;
+	type: string
+	text?: string
+	[key: string]: any
 }
 
-export type MessageCallback = (message: WebviewMessage) => void;
+// MessageCallbackの型をEnhancedWebviewMessageに更新
+export type MessageCallback = (message: EnhancedWebviewMessage) => void
 
 export interface CommunicationHandler {
-  send(message: WebviewMessage): Promise<void>;
-  onMessage(callback: MessageCallback): void;
+	send(message: StandaloneMessage): Promise<void>
+	onMessage(callback: MessageCallback): void
 }
 
 export interface VSCodeHandler extends CommunicationHandler {
-  getState(): any;
-  setState(state: any): void;
+	getState(): any
+	setState(state: any): void
 }
 
-export type CommunicationMode = 'websocket' | 'rest' | 'vscode';
+export type CommunicationMode = "websocket" | "rest" | "vscode" | "standalone"
 
 export interface CommunicationOptions {
-  wsUrl?: string;
-  restUrl?: string;
-  pollingInterval?: number;
+	wsUrl?: string
+	restUrl?: string
+	pollingInterval?: number
 }
 
 export interface CommunicationConfig {
-  mode: CommunicationMode;
-  wsUrl?: string;
-  restUrl?: string;
-  pollingInterval?: number;
+	mode: CommunicationMode
+	wsUrl?: string
+	restUrl?: string
+	pollingInterval?: number
 }
 
 export function createCommunicationConfig(config: {
-  mode: CommunicationMode;
-  wsUrl?: string;
-  restUrl?: string;
-  pollingInterval?: number;
+	mode: CommunicationMode
+	wsUrl?: string
+	restUrl?: string
+	pollingInterval?: number
 }): CommunicationConfig {
-  return {
-    mode: config.mode,
-    wsUrl: config.wsUrl,
-    restUrl: config.restUrl,
-    pollingInterval: config.pollingInterval || 1000,
-  };
-}
-
-export class VSCodeAPI implements VSCodeHandler {
-  private readonly _vscode: any;
-
-  constructor() {
-    if (typeof acquireVsCodeApi === 'function') {
-      this._vscode = acquireVsCodeApi();
-    } else {
-      this._vscode = {
-        postMessage: (message: any) => {
-          console.log('Mock message:', message);
-        },
-        getState: () => null,
-        setState: () => {},
-      };
-    }
-  }
-
-  async send(message: WebviewMessage): Promise<void> {
-    this._vscode.postMessage(message);
-  }
-
-  onMessage(callback: MessageCallback): void {
-    window.addEventListener('message', (event) => {
-      callback(event.data);
-    });
-  }
-
-  getState(): any {
-    return this._vscode.getState();
-  }
-
-  setState(state: any): void {
-    this._vscode.setState(state);
-  }
+	return {
+		mode: config.mode,
+		wsUrl: config.wsUrl,
+		restUrl: config.restUrl,
+		pollingInterval: config.pollingInterval || 1000,
+	}
 }

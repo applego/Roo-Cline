@@ -1,30 +1,28 @@
-// WebUI とサーバー間で共有する型定義
-export interface WebviewMessage {
+export interface WebSocketMessage {
 	type: string
-	text?: string
-	id?: number
-	[key: string]: any
+	payload?: any
 }
 
-// WebSocket用のレスポンス型
-export interface WebSocketResponse {
-	success: boolean
-	error?: string
-	data?: any
+export interface ServerToClientEvents {
+	message: (message: WebSocketMessage) => void
+	error: (error: Error) => void
 }
 
-// REST API用のレスポンス型
-export interface RestResponse {
-	success: boolean
-	error?: string
-	data?: WebviewMessage[]
-	lastId?: number
+export interface ClientToServerEvents {
+	message: (message: WebSocketMessage) => void
 }
 
-// サーバーの設定型
-export interface ServerConfig {
-	port: number
-	corsOrigins: string[]
-	maxReconnectAttempts: number
-	reconnectDelay: number
+export interface WebSocketConnection {
+	id: string
+	send: (message: WebSocketMessage) => void
+}
+
+export type MessageHandler = (message: WebSocketMessage, connection: WebSocketConnection) => Promise<void>
+
+export interface WebSocketServer {
+	broadcast: (message: WebSocketMessage) => void
+	send: (connectionId: string, message: WebSocketMessage) => void
+	onConnection: (handler: (connection: WebSocketConnection) => void) => void
+	onMessage: (handler: MessageHandler) => void
+	close: () => void
 }
