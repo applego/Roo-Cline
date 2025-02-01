@@ -3,15 +3,20 @@ import { getReadFileDescription } from "./read-file"
 import { getWriteToFileDescription } from "./write-to-file"
 import { getSearchFilesDescription } from "./search-files"
 import { getListFilesDescription } from "./list-files"
+import { getInsertContentDescription } from "./insert-content"
+import { getSearchAndReplaceDescription } from "./search-and-replace"
 import { getListCodeDefinitionNamesDescription } from "./list-code-definition-names"
 import { getBrowserActionDescription } from "./browser-action"
 import { getAskFollowupQuestionDescription } from "./ask-followup-question"
 import { getAttemptCompletionDescription } from "./attempt-completion"
 import { getUseMcpToolDescription } from "./use-mcp-tool"
 import { getAccessMcpResourceDescription } from "./access-mcp-resource"
+import { getSwitchModeDescription } from "./switch-mode"
+import { getNewTaskDescription } from "./new-task"
 import { DiffStrategy } from "../../diff/DiffStrategy"
 import { McpHub } from "../../../services/mcp/McpHub"
-import { Mode, ToolName, getModeConfig, isToolAllowedForMode } from "../../../shared/modes"
+import { Mode, ModeConfig, getModeConfig, isToolAllowedForMode, getGroupName } from "../../../shared/modes"
+import { ToolName, TOOL_GROUPS, ALWAYS_AVAILABLE_TOOLS } from "../../../shared/tool-groups"
 import { ToolArgs } from "./types"
 
 // Map of tool names to their description functions
@@ -27,6 +32,10 @@ const toolDescriptionMap: Record<string, (args: ToolArgs) => string | undefined>
 	attempt_completion: () => getAttemptCompletionDescription(),
 	use_mcp_tool: (args) => getUseMcpToolDescription(args),
 	access_mcp_resource: (args) => getAccessMcpResourceDescription(args),
+	switch_mode: () => getSwitchModeDescription(),
+	new_task: (args) => getNewTaskDescription(args),
+	insert_content: (args) => getInsertContentDescription(args),
+	search_and_replace: (args) => getSearchAndReplaceDescription(args),
 	apply_diff: (args) =>
 		args.diffStrategy ? args.diffStrategy.getToolDescription({ cwd: args.cwd, toolOptions: args.toolOptions }) : "",
 }
@@ -38,8 +47,10 @@ export function getToolDescriptionsForMode(
 	diffStrategy?: DiffStrategy,
 	browserViewportSize?: string,
 	mcpHub?: McpHub,
+	customModes?: ModeConfig[],
+	experiments?: Record<string, boolean>,
 ): string {
-	const config = getModeConfig(mode)
+	const config = getModeConfig(mode, customModes)
 	const args: ToolArgs = {
 		cwd,
 		supportsComputerUse,
@@ -48,16 +59,34 @@ export function getToolDescriptionsForMode(
 		mcpHub,
 	}
 
-	// Map tool descriptions in the exact order specified in the mode's tools array
-	const descriptions = config.tools.map(([toolName, toolOptions]) => {
+	const tools = new Set<string>()
+
+	// Add tools from mode's groups
+	config.groups.forEach((groupEntry) => {
+		const groupName = getGroupName(groupEntry)
+		const toolGroup = TOOL_GROUPS[groupName]
+		if (toolGroup) {
+			toolGroup.forEach((tool) => {
+				if (isToolAllowedForMode(tool as ToolName, mode, customModes ?? [], experiments ?? {})) {
+					tools.add(tool)
+				}
+			})
+		}
+	})
+
+	// Add always available tools
+	ALWAYS_AVAILABLE_TOOLS.forEach((tool) => tools.add(tool))
+
+	// Map tool descriptions for allowed tools
+	const descriptions = Array.from(tools).map((toolName) => {
 		const descriptionFn = toolDescriptionMap[toolName]
-		if (!descriptionFn || !isToolAllowedForMode(toolName as ToolName, mode)) {
+		if (!descriptionFn) {
 			return undefined
 		}
 
 		return descriptionFn({
 			...args,
-			toolOptions,
+			toolOptions: undefined, // No tool options in group-based approach
 		})
 	})
 
@@ -77,4 +106,7 @@ export {
 	getAttemptCompletionDescription,
 	getUseMcpToolDescription,
 	getAccessMcpResourceDescription,
+	getSwitchModeDescription,
+	getInsertContentDescription,
+	getSearchAndReplaceDescription,
 }

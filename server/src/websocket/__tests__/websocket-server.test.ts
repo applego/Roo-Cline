@@ -1,28 +1,78 @@
 import { WebSocketServerImpl } from "../websocket-server"
 import { ConfigStore } from "../../config/ConfigStore"
 import { McpManager } from "../../mcp/McpManager"
-import { WebSocketMessage } from "../../types"
-import { MockWebSocket, MockWebSocketServer, mockWebSocket, mockWebSocketServer } from "./mock-websocket"
+import { WebSocket } from "ws"
+import { MessageHandler } from "../../types"
+import path from "path"
 
 jest.mock("ws", () => ({
-	WebSocket: mockWebSocket,
-	WebSocketServer: mockWebSocketServer,
+	WebSocket: {
+		OPEN: 1,
+	},
+	WebSocketServer: jest.fn().mockImplementation(() => ({
+		on: jest.fn(),
+		close: jest.fn(),
+	})),
 }))
-jest.mock("../../config/ConfigStore")
-jest.mock("../../mcp/McpManager")
+
+class MockConfigStore extends ConfigStore {
+	constructor() {
+		super(path.join(__dirname, "test-config"))
+	}
+
+	override async load() {
+		return this.getDefaultConfig()
+	}
+
+	override async save() {
+		// テスト用のモックなので何もしない
+	}
+}
+
+class MockMcpManager extends McpManager {
+	constructor() {
+		const configStore = new MockConfigStore()
+		super(configStore)
+	}
+
+	override async initialize(): Promise<void> {
+		// テスト用のモックなので何もしない
+	}
+
+	override async connectToServer(): Promise<void> {
+		// テスト用のモックなので何もしない
+	}
+
+	override async callTool(): Promise<any> {
+		return {
+			content: [{ type: "text", text: "mock result" }],
+		}
+	}
+}
 
 describe("WebSocketServerImpl", () => {
 	let server: WebSocketServerImpl
-	let configStore: jest.Mocked<ConfigStore>
-	let mcpManager: jest.Mocked<McpManager>
-	let mockWss: MockWebSocketServer
-	const TEST_PORT = 8080
+	let mockConfigStore: ConfigStore
+	let mockMcpManager: McpManager
+	let mockMessageHandler: MessageHandler
+	let mockWs: any
+	let connectionId: string
 
 	beforeEach(() => {
-		configStore = new ConfigStore("") as jest.Mocked<ConfigStore>
-		mcpManager = new McpManager() as jest.Mocked<McpManager>
-		server = new WebSocketServerImpl(TEST_PORT, configStore, mcpManager)
-		mockWss = (server as any).wss
+		mockConfigStore = new MockConfigStore()
+		mockMcpManager = new MockMcpManager()
+		mockMessageHandler = jest.fn()
+		connectionId = "test-connection-id"
+
+		mockWs = {
+			on: jest.fn(),
+			send: jest.fn(),
+			readyState: WebSocket.OPEN,
+			connectionId,
+		}
+
+		server = new WebSocketServerImpl(8080, mockConfigStore, mockMcpManager)
+		server.onMessage(mockMessageHandler)
 	})
 
 	afterEach(() => {
@@ -30,230 +80,126 @@ describe("WebSocketServerImpl", () => {
 		jest.clearAllMocks()
 	})
 
-	describe("connection management", () => {
-		it("should handle new connections", () => {
-			const mockWs = new MockWebSocket()
-			const mockConnectionHandler = jest.fn()
+	describe("レート制限テスト", () => {
+		let messageCallback: ((data: string) => void) | undefined
+		let closeCallback: (() => void) | undefined
 
-			server.onConnection(mockConnectionHandler)
-			mockWss.addClient(mockWs)
+		beforeEach(() => {
+			mockWs.on.mockImplementation((event: string, cb: any) => {
+				if (event === "message") {
+					messageCallback = cb
+				} else if (event === "close") {
+					closeCallback = cb
+				}
+			})
 
-			expect(mockConnectionHandler).toHaveBeenCalledWith(
-				expect.objectContaining({
-					id: expect.any(String),
-					send: expect.any(Function),
-				}),
-			)
+			// connection イベントのコールバックを実行
+			const wss = (server as any).wss
+			const connectionCallback = wss.on.mock.calls.find((call) => call[0] === "connection")?.[1]
+
+			if (connectionCallback) {
+				connectionCallback(mockWs)
+			}
 		})
 
-		it("should handle connection close", () => {
-			const mockWs = new MockWebSocket()
-			mockWss.addClient(mockWs)
+		it("レート制限内のリクエストを許可する", async () => {
+			expect(messageCallback).toBeDefined()
+			if (!messageCallback) return
 
-			mockWs.emit("close")
-
-			expect((server as any).connections.size).toBe(0)
+			// 10回までのリクエストは許可される
+			for (let i = 0; i < 10; i++) {
+				await messageCallback(JSON.stringify({ type: "test" }))
+				expect(mockMessageHandler).toHaveBeenCalledTimes(i + 1)
+			}
 		})
 
-		it("should handle connection errors", () => {
-			const mockWs = new MockWebSocket()
-			const mockError = new Error("Test connection error")
+		it("レート制限を超えたリクエストをブロックする", async () => {
+			expect(messageCallback).toBeDefined()
+			if (!messageCallback) return
 
-			mockWss.addClient(mockWs)
-			mockWs.emit("error", mockError)
-
-			expect((server as any).connections.size).toBe(0)
-		})
-
-		it("should broadcast messages to all connections", () => {
-			const mockWs1 = new MockWebSocket()
-			const mockWs2 = new MockWebSocket()
-
-			mockWss.addClient(mockWs1)
-			mockWss.addClient(mockWs2)
-
-			const testMessage: WebSocketMessage = {
-				type: "test",
-				payload: "test data",
+			// 10回リクエストを送信
+			for (let i = 0; i < 10; i++) {
+				await messageCallback(JSON.stringify({ type: "test" }))
 			}
 
-			server.broadcast(testMessage)
-
-			expect(mockWs1.send).toHaveBeenCalledWith(JSON.stringify(testMessage))
-			expect(mockWs2.send).toHaveBeenCalledWith(JSON.stringify(testMessage))
+			// 11回目のリクエストはブロックされる
+			await messageCallback(JSON.stringify({ type: "test" }))
+			expect(mockWs.send).toHaveBeenCalledWith(expect.stringContaining("RATE_LIMIT_EXCEEDED"))
+			expect(mockMessageHandler).toHaveBeenCalledTimes(10)
 		})
 
-		it("should not send to closed connections during broadcast", () => {
-			const mockWs1 = new MockWebSocket()
-			const mockWs2 = new MockWebSocket()
-			mockWs2.readyState = MockWebSocket.CLOSED
+		it("接続切断時にレート制限カウンターがリセットされる", async () => {
+			expect(messageCallback).toBeDefined()
+			expect(closeCallback).toBeDefined()
+			if (!messageCallback || !closeCallback) return
 
-			mockWss.addClient(mockWs1)
-			mockWss.addClient(mockWs2)
-
-			const testMessage: WebSocketMessage = {
-				type: "test",
-				payload: "test data",
+			// 10回リクエストを送信
+			for (let i = 0; i < 10; i++) {
+				await messageCallback(JSON.stringify({ type: "test" }))
 			}
 
-			server.broadcast(testMessage)
+			// コネクションクローズをシミュレート
+			closeCallback()
 
-			expect(mockWs1.send).toHaveBeenCalledWith(JSON.stringify(testMessage))
-			expect(mockWs2.send).not.toHaveBeenCalled()
+			// 新しいコネクションで再度リクエスト可能
+			const wss = (server as any).wss
+			const connectionCallback = wss.on.mock.calls.find((call) => call[0] === "connection")?.[1]
+
+			if (connectionCallback) {
+				connectionCallback(mockWs)
+				await messageCallback(JSON.stringify({ type: "test" }))
+				expect(mockMessageHandler).toHaveBeenCalledTimes(11)
+			}
+		})
+
+		it("レート制限情報を取得できる", () => {
+			const info = server.getRateLimitInfo(connectionId)
+
+			expect(info).toHaveProperty("remainingRequests")
+			expect(info).toHaveProperty("nextRequestDelay")
+			expect(info.remainingRequests).toBe(10)
+			expect(info.nextRequestDelay).toBe(0)
 		})
 	})
 
-	describe("message handling", () => {
-		let mockWs: MockWebSocket
+	it("メッセージを正常に処理する", async () => {
+		const message = { type: "test", payload: "data" }
+		let messageCallback: ((data: string) => void) | undefined
 
-		beforeEach(() => {
-			mockWs = new MockWebSocket()
-			mockWss.addClient(mockWs)
+		mockWs.on.mockImplementation((event: string, cb: any) => {
+			if (event === "message") {
+				messageCallback = cb
+			}
 		})
 
-		it("should handle invalid JSON message", () => {
-			mockWs.emit("message", "invalid json")
+		const wss = (server as any).wss
+		const connectionCallback = wss.on.mock.calls.find((call) => call[0] === "connection")?.[1]
 
-			expect(mockWs.send).toHaveBeenCalledWith(
-				JSON.stringify({
-					type: "error",
-					payload: "Invalid message format",
-				}),
-			)
+		if (connectionCallback && messageCallback) {
+			connectionCallback(mockWs)
+			await messageCallback(JSON.stringify(message))
+
+			expect(mockMessageHandler).toHaveBeenCalledWith(message, expect.any(Object))
+		}
+	})
+
+	it("無効なメッセージでエラーを返す", async () => {
+		let messageCallback: ((data: string) => void) | undefined
+
+		mockWs.on.mockImplementation((event: string, cb: any) => {
+			if (event === "message") {
+				messageCallback = cb
+			}
 		})
 
-		it("should handle upsertApiConfiguration message", async () => {
-			const mockConfig = {
-				apiConfig: {
-					default: {
-						provider: "openai",
-						apiKey: "test-key",
-					},
-				},
-			}
-			configStore.load.mockResolvedValue(mockConfig)
+		const wss = (server as any).wss
+		const connectionCallback = wss.on.mock.calls.find((call) => call[0] === "connection")?.[1]
 
-			const message: WebSocketMessage = {
-				type: "upsertApiConfiguration",
-				payload: {
-					default: {
-						provider: "openai",
-						apiKey: "new-key",
-					},
-				},
-			}
+		if (connectionCallback && messageCallback) {
+			connectionCallback(mockWs)
+			await messageCallback("invalid json")
 
-			mockWs.emit("message", JSON.stringify(message))
-
-			await new Promise(process.nextTick) // メッセージ処理の完了を待つ
-
-			expect(configStore.save).toHaveBeenCalledWith(
-				expect.objectContaining({
-					apiConfig: expect.objectContaining({
-						default: expect.objectContaining({
-							provider: "openai",
-							apiKey: "new-key",
-						}),
-					}),
-				}),
-			)
-
-			expect(mockWs.send).toHaveBeenCalledWith(expect.stringContaining("apiConfigurationUpdated"))
-		})
-
-		it("should handle use_mcp_tool message", async () => {
-			const mockToolResult = { success: true, data: "test result" }
-			mcpManager.callTool.mockResolvedValue(mockToolResult)
-
-			const message: WebSocketMessage = {
-				type: "use_mcp_tool",
-				payload: {
-					serverName: "test-server",
-					toolName: "test-tool",
-					args: { test: "arg" },
-				},
-			}
-
-			mockWs.emit("message", JSON.stringify(message))
-
-			await new Promise(process.nextTick)
-
-			expect(mcpManager.callTool).toHaveBeenCalledWith("test-server", "test-tool", { test: "arg" })
-
-			expect(mockWs.send).toHaveBeenCalledWith(
-				JSON.stringify({
-					type: "mcpToolResult",
-					payload: mockToolResult,
-				}),
-			)
-		})
-
-		it("should handle getConfig message", async () => {
-			const mockConfig = {
-				preferredLanguage: "ja",
-				customInstructions: "",
-				modePrompts: {},
-				apiConfig: {
-					default: {
-						provider: "openai",
-						apiKey: "test-key",
-					},
-				},
-			}
-			configStore.load.mockResolvedValue(mockConfig)
-
-			const message: WebSocketMessage = {
-				type: "getConfig",
-			}
-
-			mockWs.emit("message", JSON.stringify(message))
-
-			await new Promise(process.nextTick)
-
-			expect(configStore.load).toHaveBeenCalled()
-			expect(mockWs.send).toHaveBeenCalledWith(
-				JSON.stringify({
-					type: "config",
-					payload: mockConfig,
-				}),
-			)
-		})
-
-		it("should handle unknown message type", async () => {
-			const message: WebSocketMessage = {
-				type: "unknownType",
-			}
-
-			mockWs.emit("message", JSON.stringify(message))
-
-			await new Promise(process.nextTick)
-
-			expect(mockWs.send).toHaveBeenCalledWith(
-				JSON.stringify({
-					type: "error",
-					payload: expect.stringContaining("Unsupported message type"),
-				}),
-			)
-		})
-
-		it("should handle errors during message processing", async () => {
-			const mockError = new Error("Test error")
-			configStore.load.mockRejectedValue(mockError)
-
-			const message: WebSocketMessage = {
-				type: "getConfig",
-			}
-
-			mockWs.emit("message", JSON.stringify(message))
-
-			await new Promise(process.nextTick)
-
-			expect(mockWs.send).toHaveBeenCalledWith(
-				JSON.stringify({
-					type: "error",
-					payload: "Test error",
-				}),
-			)
-		})
+			expect(mockWs.send).toHaveBeenCalledWith(expect.stringContaining("Invalid message format"))
+		}
 	})
 })

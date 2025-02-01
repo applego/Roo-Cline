@@ -1,8 +1,9 @@
 import { promises as fs } from "fs"
 import path from "path"
+import { RooConfig } from "../types/config"
 
 export class ConfigStore {
-	private configPath: string
+	readonly configPath: string
 
 	constructor(configDir: string) {
 		this.configPath = path.join(configDir, "roo-config.json")
@@ -21,7 +22,7 @@ export class ConfigStore {
 		await fs.writeFile(this.configPath, JSON.stringify(config, null, 2))
 	}
 
-	private getDefaultConfig(): RooConfig {
+	getDefaultConfig(): RooConfig {
 		return {
 			preferredLanguage: "en",
 			customInstructions: "",

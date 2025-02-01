@@ -1,5 +1,6 @@
 import { Anthropic } from "@anthropic-ai/sdk"
 import OpenAI, { AzureOpenAI } from "openai"
+
 import {
 	ApiHandlerOptions,
 	azureOpenAiDefaultApiVersion,
@@ -8,6 +9,7 @@ import {
 } from "../../shared/api"
 import { ApiHandler, SingleCompletionHandler } from "../index"
 import { convertToOpenAiMessages } from "../transform/openai-format"
+import { convertToR1Format } from "../transform/r1-format"
 import { ApiStream } from "../transform/stream"
 
 export class OpenAiHandler implements ApiHandler, SingleCompletionHandler {
@@ -16,9 +18,10 @@ export class OpenAiHandler implements ApiHandler, SingleCompletionHandler {
 
 	constructor(options: ApiHandlerOptions) {
 		this.options = options
-		// Azure API shape slightly differs from the core API shape: https://github.com/openai/openai-node?tab=readme-ov-file#microsoft-azure-openai
+		// Azure API shape slightly differs from the core API shape:
+		// https://github.com/openai/openai-node?tab=readme-ov-file#microsoft-azure-openai
 		const urlHost = new URL(this.options.openAiBaseUrl ?? "").host
-		if (urlHost === "azure.com" || urlHost.endsWith(".azure.com")) {
+		if (urlHost === "azure.com" || urlHost.endsWith(".azure.com") || options.openAiUseAzure) {
 			this.client = new AzureOpenAI({
 				baseURL: this.options.openAiBaseUrl,
 				apiKey: this.options.openAiApiKey,
@@ -36,6 +39,8 @@ export class OpenAiHandler implements ApiHandler, SingleCompletionHandler {
 		const modelInfo = this.getModel().info
 		const modelId = this.options.openAiModelId ?? ""
 
+		const deepseekReasoner = modelId.includes("deepseek-reasoner")
+
 		if (this.options.openAiStreamingEnabled ?? true) {
 			const systemMessage: OpenAI.Chat.ChatCompletionSystemMessageParam = {
 				role: "system",
@@ -44,7 +49,9 @@ export class OpenAiHandler implements ApiHandler, SingleCompletionHandler {
 			const requestOptions: OpenAI.Chat.Completions.ChatCompletionCreateParamsStreaming = {
 				model: modelId,
 				temperature: 0,
-				messages: [systemMessage, ...convertToOpenAiMessages(messages)],
+				messages: deepseekReasoner
+					? convertToR1Format([{ role: "user", content: systemPrompt }, ...messages])
+					: [systemMessage, ...convertToOpenAiMessages(messages)],
 				stream: true as const,
 				stream_options: { include_usage: true },
 			}
@@ -55,11 +62,19 @@ export class OpenAiHandler implements ApiHandler, SingleCompletionHandler {
 			const stream = await this.client.chat.completions.create(requestOptions)
 
 			for await (const chunk of stream) {
-				const delta = chunk.choices[0]?.delta
-				if (delta?.content) {
+				const delta = chunk.choices[0]?.delta ?? {}
+
+				if (delta.content) {
 					yield {
 						type: "text",
 						text: delta.content,
+					}
+				}
+
+				if ("reasoning_content" in delta && delta.reasoning_content) {
+					yield {
+						type: "reasoning",
+						text: (delta.reasoning_content as string | undefined) || "",
 					}
 				}
 				if (chunk.usage) {
@@ -76,10 +91,14 @@ export class OpenAiHandler implements ApiHandler, SingleCompletionHandler {
 				role: "user",
 				content: systemPrompt,
 			}
+
 			const requestOptions: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
 				model: modelId,
-				messages: [systemMessage, ...convertToOpenAiMessages(messages)],
+				messages: deepseekReasoner
+					? convertToR1Format([{ role: "user", content: systemPrompt }, ...messages])
+					: [systemMessage, ...convertToOpenAiMessages(messages)],
 			}
+
 			const response = await this.client.chat.completions.create(requestOptions)
 
 			yield {
@@ -97,7 +116,7 @@ export class OpenAiHandler implements ApiHandler, SingleCompletionHandler {
 	getModel(): { id: string; info: ModelInfo } {
 		return {
 			id: this.options.openAiModelId ?? "",
-			info: openAiModelInfoSaneDefaults,
+			info: this.options.openAiCustomModelInfo ?? openAiModelInfoSaneDefaults,
 		}
 	}
 
@@ -106,7 +125,6 @@ export class OpenAiHandler implements ApiHandler, SingleCompletionHandler {
 			const requestOptions: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
 				model: this.getModel().id,
 				messages: [{ role: "user", content: prompt }],
-				temperature: 0,
 			}
 
 			const response = await this.client.chat.completions.create(requestOptions)

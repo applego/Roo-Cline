@@ -1,16 +1,14 @@
-// VSCRUI コンポーネントのモック
-export const Checkbox = "vscrui-checkbox"
-export const Dropdown = "vscrui-dropdown"
+import React from "react"
 
-// 型定義
-export interface DropdownOption {
-  label: string
-  value: string
-  description?: string
-  disabled?: boolean
+export const Checkbox = ({ children, checked, onChange }: any) =>
+	React.createElement("div", { "data-testid": "mock-checkbox", onClick: onChange }, children)
+
+export const Dropdown = ({ children, value, onChange }: any) =>
+	React.createElement("div", { "data-testid": "mock-dropdown", onClick: onChange }, children)
+
+export const Pane = ({ children }: any) => React.createElement("div", { "data-testid": "mock-pane" }, children)
+
+export type DropdownOption = {
+	label: string
+	value: string
 }
-
-// エクスポートされる他のコンポーネントやタイプをここに追加
-export const Badge = "vscrui-badge"
-export const TextArea = "vscrui-textarea"
-export const Button = "vscrui-button"

@@ -14,7 +14,7 @@ import ContextMenu from "./ContextMenu"
 import Thumbnails from "../common/Thumbnails"
 import { vscode } from "../../utils/vscode"
 import { WebviewMessage } from "../../../../src/shared/WebviewMessage"
-import { Mode, modes } from "../../../../src/shared/modes"
+import { Mode, getAllModes } from "../../../../src/shared/modes"
 import { CaretIcon } from "../common/CaretIcon"
 
 interface ChatTextAreaProps {
@@ -50,7 +50,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		},
 		ref,
 	) => {
-		const { filePaths, currentApiConfigName, listApiConfigMeta } = useExtensionState()
+		const { filePaths, currentApiConfigName, listApiConfigMeta, customModes } = useExtensionState()
 		const [gitCommits, setGitCommits] = useState<any[]>([])
 		const [showDropdown, setShowDropdown] = useState(false)
 
@@ -103,6 +103,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 		const [intendedCursorPosition, setIntendedCursorPosition] = useState<number | null>(null)
 		const contextMenuContainerRef = useRef<HTMLDivElement>(null)
 		const [isEnhancingPrompt, setIsEnhancingPrompt] = useState(false)
+		const [isFocused, setIsFocused] = useState(false)
 
 		// Fetch git commits when Git is selected or when typing a hash
 		useEffect(() => {
@@ -379,6 +380,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			if (!isMouseDownOnMenu) {
 				setShowContextMenu(false)
 			}
+			setIsFocused(false)
 		}, [isMouseDownOnMenu])
 
 		const handlePaste = useCallback(
@@ -511,6 +513,11 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 			appearance: "none" as const,
 		}
 
+		const optionStyle = {
+			backgroundColor: "var(--vscode-dropdown-background)",
+			color: "var(--vscode-dropdown-foreground)",
+		}
+
 		const caretContainerStyle = {
 			position: "absolute" as const,
 			left: 6,
@@ -532,6 +539,10 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 					backgroundColor: "var(--vscode-input-background)",
 					margin: "10px 15px",
 					padding: "8px",
+					outline: "none",
+					border: "1px solid",
+					borderColor: isFocused ? "var(--vscode-focusBorder)" : "transparent",
+					borderRadius: "2px",
 				}}
 				onDrop={async (e) => {
 					e.preventDefault()
@@ -622,7 +633,8 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							fontFamily: "var(--vscode-font-family)",
 							fontSize: "var(--vscode-editor-font-size)",
 							lineHeight: "var(--vscode-editor-line-height)",
-							padding: "8px",
+							padding: "2px",
+							paddingRight: "8px",
 							marginBottom: thumbnailsHeight > 0 ? `${thumbnailsHeight + 16}px` : 0,
 							zIndex: 1,
 						}}
@@ -642,6 +654,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							handleInputChange(e)
 							updateHighlights()
 						}}
+						onFocus={() => setIsFocused(true)}
 						onKeyDown={handleKeyDown}
 						onKeyUp={handleKeyUp}
 						onBlur={handleBlur}
@@ -655,11 +668,12 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							onHeightChange?.(height)
 						}}
 						placeholder={placeholderText}
-						minRows={2}
-						maxRows={20}
+						minRows={3}
+						maxRows={15}
 						autoFocus={true}
 						style={{
 							width: "100%",
+							outline: "none",
 							boxSizing: "border-box",
 							backgroundColor: "transparent",
 							color: "var(--vscode-input-foreground)",
@@ -671,11 +685,13 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							overflowX: "hidden",
 							overflowY: "auto",
 							border: "none",
-							padding: "8px",
+							padding: "2px",
+							paddingRight: "8px",
 							marginBottom: thumbnailsHeight > 0 ? `${thumbnailsHeight + 16}px` : 0,
 							cursor: textAreaDisabled ? "not-allowed" : undefined,
 							flex: "0 1 auto",
 							zIndex: 2,
+							scrollbarWidth: "none",
 						}}
 						onScroll={() => updateHighlights()}
 					/>
@@ -691,7 +707,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 							bottom: "36px",
 							left: "16px",
 							zIndex: 2,
-							marginBottom: "8px",
+							marginBottom: "4px",
 						}}
 					/>
 				)}
@@ -702,7 +718,7 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 						justifyContent: "space-between",
 						alignItems: "center",
 						marginTop: "auto",
-						paddingTop: "8px",
+						paddingTop: "2px",
 					}}>
 					<div
 						style={{
@@ -714,11 +730,15 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 								value={mode}
 								disabled={textAreaDisabled}
 								onChange={(e) => {
-									const newMode = e.target.value as Mode
-									setMode(newMode)
+									const value = e.target.value
+									if (value === "prompts-action") {
+										window.postMessage({ type: "action", action: "promptsButtonClicked" })
+										return
+									}
+									setMode(value as Mode)
 									vscode.postMessage({
 										type: "mode",
-										text: newMode,
+										text: value,
 									})
 								}}
 								style={{
@@ -726,17 +746,22 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 									minWidth: "70px",
 									flex: "0 0 auto",
 								}}>
-								{modes.map((mode) => (
-									<option
-										key={mode.slug}
-										value={mode.slug}
-										style={{
-											backgroundColor: "var(--vscode-dropdown-background)",
-											color: "var(--vscode-dropdown-foreground)",
-										}}>
+								{getAllModes(customModes).map((mode) => (
+									<option key={mode.slug} value={mode.slug} style={{ ...optionStyle }}>
 										{mode.name}
 									</option>
 								))}
+								<option
+									disabled
+									style={{
+										borderTop: "1px solid var(--vscode-dropdown-border)",
+										...optionStyle,
+									}}>
+									────
+								</option>
+								<option value="prompts-action" style={{ ...optionStyle }}>
+									Edit...
+								</option>
 							</select>
 							<div style={caretContainerStyle}>
 								<CaretIcon />
@@ -753,30 +778,45 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 								overflow: "hidden",
 							}}>
 							<select
-								value={currentApiConfigName}
+								value={currentApiConfigName || ""}
 								disabled={textAreaDisabled}
-								onChange={(e) =>
+								onChange={(e) => {
+									const value = e.target.value
+									if (value === "settings-action") {
+										window.postMessage({ type: "action", action: "settingsButtonClicked" })
+										return
+									}
 									vscode.postMessage({
 										type: "loadApiConfiguration",
-										text: e.target.value,
+										text: value,
 									})
-								}
+								}}
 								style={{
 									...selectStyle,
 									width: "100%",
 									textOverflow: "ellipsis",
 								}}>
-								{(listApiConfigMeta || [])?.map((config) => (
+								{(listApiConfigMeta || []).map((config) => (
 									<option
 										key={config.name}
 										value={config.name}
 										style={{
-											backgroundColor: "var(--vscode-dropdown-background)",
-											color: "var(--vscode-dropdown-foreground)",
+											...optionStyle,
 										}}>
 										{config.name}
 									</option>
 								))}
+								<option
+									disabled
+									style={{
+										borderTop: "1px solid var(--vscode-dropdown-border)",
+										...optionStyle,
+									}}>
+									────
+								</option>
+								<option value="settings-action" style={{ ...optionStyle }}>
+									Edit...
+								</option>
 							</select>
 							<div style={caretContainerStyle}>
 								<CaretIcon />
@@ -806,14 +846,18 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 									role="button"
 									aria-label="enhance prompt"
 									data-testid="enhance-prompt-button"
-									className={`input-icon-button ${textAreaDisabled ? "disabled" : ""} codicon codicon-sparkle`}
+									className={`input-icon-button ${
+										textAreaDisabled ? "disabled" : ""
+									} codicon codicon-sparkle`}
 									onClick={() => !textAreaDisabled && handleEnhancePrompt()}
 									style={{ fontSize: 16.5 }}
 								/>
 							)}
 						</div>
 						<span
-							className={`input-icon-button ${shouldDisableImages ? "disabled" : ""} codicon codicon-device-camera`}
+							className={`input-icon-button ${
+								shouldDisableImages ? "disabled" : ""
+							} codicon codicon-device-camera`}
 							onClick={() => !shouldDisableImages && onSelectImages()}
 							style={{ fontSize: 16.5 }}
 						/>

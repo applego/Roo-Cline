@@ -10,6 +10,7 @@ import delay from "delay"
 // Add custom interface for OpenRouter params
 type OpenRouterChatCompletionParams = OpenAI.Chat.ChatCompletionCreateParams & {
 	transforms?: string[]
+	include_reasoning?: boolean
 }
 
 // Add custom interface for OpenRouter usage chunk
@@ -18,6 +19,7 @@ interface OpenRouterApiStreamUsageChunk extends ApiStreamUsageChunk {
 }
 
 import { SingleCompletionHandler } from ".."
+import { convertToR1Format } from "../transform/r1-format"
 
 export class OpenRouterHandler implements ApiHandler, SingleCompletionHandler {
 	private options: ApiHandlerOptions
@@ -26,11 +28,11 @@ export class OpenRouterHandler implements ApiHandler, SingleCompletionHandler {
 	constructor(options: ApiHandlerOptions) {
 		this.options = options
 		this.client = new OpenAI({
-			baseURL: "https://openrouter.ai/api/v1",
+			baseURL: this.options.openRouterBaseUrl || "https://openrouter.ai/api/v1",
 			apiKey: this.options.openRouterApiKey,
 			defaultHeaders: {
-				"HTTP-Referer": "https://github.com/RooVetGit/Roo-Cline", // Optional, for including your app on openrouter.ai rankings.
-				"X-Title": "Roo-Cline", // Optional. Shows in rankings on openrouter.ai.
+				"HTTP-Referer": "https://github.com/RooVetGit/Roo-Cline",
+				"X-Title": "Roo Code",
 			},
 		})
 	}
@@ -40,7 +42,7 @@ export class OpenRouterHandler implements ApiHandler, SingleCompletionHandler {
 		messages: Anthropic.Messages.MessageParam[],
 	): AsyncGenerator<ApiStreamChunk> {
 		// Convert Anthropic messages to OpenAI format
-		const openAiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+		let openAiMessages: OpenAI.Chat.ChatCompletionMessageParam[] = [
 			{ role: "system", content: systemPrompt },
 			...convertToOpenAiMessages(messages),
 		]
@@ -110,14 +112,34 @@ export class OpenRouterHandler implements ApiHandler, SingleCompletionHandler {
 				maxTokens = 8_192
 				break
 		}
+
+		let temperature = 0
+		let topP: number | undefined = undefined
+
+		// Handle models based on deepseek-r1
+		if (
+			this.getModel().id.startsWith("deepseek/deepseek-r1") ||
+			this.getModel().id === "perplexity/sonar-reasoning"
+		) {
+			// Recommended temperature for DeepSeek reasoning models
+			temperature = 0.6
+			// DeepSeek highly recommends using user instead of system
+			// role
+			openAiMessages = convertToR1Format([{ role: "user", content: systemPrompt }, ...messages])
+			// Some provider support topP and 0.95 is value that Deepseek used in their benchmarks
+			topP = 0.95
+		}
+
 		// https://openrouter.ai/docs/transforms
 		let fullResponseText = ""
 		const stream = await this.client.chat.completions.create({
 			model: this.getModel().id,
 			max_tokens: maxTokens,
-			temperature: 0,
+			temperature: temperature,
+			top_p: topP,
 			messages: openAiMessages,
 			stream: true,
+			include_reasoning: true,
 			// This way, the transforms field will only be included in the parameters when openRouterUseMiddleOutTransform is true.
 			...(this.options.openRouterUseMiddleOutTransform && { transforms: ["middle-out"] }),
 		} as OpenRouterChatCompletionParams)
@@ -137,6 +159,12 @@ export class OpenRouterHandler implements ApiHandler, SingleCompletionHandler {
 			}
 
 			const delta = chunk.choices[0]?.delta
+			if ("reasoning" in delta && delta.reasoning) {
+				yield {
+					type: "reasoning",
+					text: delta.reasoning,
+				} as ApiStreamChunk
+			}
 			if (delta?.content) {
 				fullResponseText += delta.content
 				yield {
