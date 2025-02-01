@@ -1,36 +1,40 @@
 import React from "react"
-import styled from "styled-components"
+import { StyledPanel, Content, Section, SectionTitle } from "../common/StyledComponents"
+import { LanguageSelect } from "./LanguageSelect"
+import { CustomInstructionsEditor } from "./CustomInstructionsEditor"
+import { ModePromptsManager } from "./ModePromptsManager"
+import ApiConfigManager from "./ApiConfigManager"
+import { ToolsManager } from "./ToolsManager"
 
-interface SettingsPanelProps {
-	onClose: () => void
-}
-
-export const SettingsPanel: React.FC<SettingsPanelProps> = ({ onClose }) => {
+export const SettingsPanel: React.FC = () => {
 	return (
 		<StyledPanel>
-			<Header>
-				<Title>Settings</Title>
-				<CloseButton onClick={onClose}>×</CloseButton>
-			</Header>
 			<Content>
 				<Section>
-					<SectionTitle>Preferred Language</SectionTitle>
+					<SectionTitle>言語設定</SectionTitle>
 					<LanguageSelect />
 				</Section>
 				<Section>
-					<SectionTitle>Custom Instructions</SectionTitle>
+					<SectionTitle>カスタムインストラクション</SectionTitle>
 					<CustomInstructionsEditor />
 				</Section>
 				<Section>
-					<SectionTitle>Mode-Specific Prompts</SectionTitle>
+					<SectionTitle>モード別プロンプト</SectionTitle>
 					<ModePromptsManager />
 				</Section>
 				<Section>
-					<SectionTitle>API Configuration</SectionTitle>
-					<ApiConfigManager />
+					<SectionTitle>API設定</SectionTitle>
+					<ApiConfigManager
+						currentApiConfigName=""
+						listApiConfigMeta={[]}
+						onSelectConfig={() => {}}
+						onDeleteConfig={() => {}}
+						onRenameConfig={() => {}}
+						onUpsertConfig={() => {}}
+					/>
 				</Section>
 				<Section>
-					<SectionTitle>Available Tools</SectionTitle>
+					<SectionTitle>利用可能なツール</SectionTitle>
 					<ToolsManager />
 				</Section>
 			</Content>

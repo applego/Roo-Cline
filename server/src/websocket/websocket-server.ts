@@ -1,15 +1,25 @@
 import { WebSocket, WebSocketServer as WSServer } from "ws"
 import { v4 as uuidv4 } from "uuid"
 import { WebSocketMessage, WebSocketServer, WebSocketConnection, MessageHandler } from "../types"
+import { ConfigStore } from "../config/ConfigStore"
+import { McpManager } from "../mcp/McpManager"
+import { MessageRouter } from "./message-handler"
 
 export class WebSocketServerImpl implements WebSocketServer {
 	private wss: WSServer
 	private connections: Map<string, WebSocket> = new Map()
 	private messageHandler?: MessageHandler
 	private connectionHandler?: (connection: WebSocketConnection) => void
+	private configStore: ConfigStore
+	private mcpManager: McpManager
+	private messageRouter: MessageRouter
 
-	constructor(port: number) {
+	constructor(port: number, configStore: ConfigStore, mcpManager: McpManager) {
 		this.wss = new WSServer({ port })
+		this.configStore = configStore
+		this.mcpManager = mcpManager
+		this.messageRouter = new MessageRouter(configStore, mcpManager)
+		this.messageHandler = this.messageRouter.createMessageHandler()
 		this.setupWSServer()
 	}
 

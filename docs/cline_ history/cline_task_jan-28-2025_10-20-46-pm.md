@@ -451,7 +451,7 @@
 8 | import pWaitFor from "p-wait-for"
 9 | import * as path from "path"
 10 | import { serializeError } from "serialize-error"
-11 | import * as vscode from "vscode"
+11 | import _ as vscode from "vscode"
 12 | import { ApiHandler, SingleCompletionHandler, buildApiHandler } from "../api"
 13 | import { ApiStream } from "../api/transform/stream"
 14 | import { DiffViewProvider } from "../integrations/editor/DiffViewProvider"
@@ -745,7 +745,7 @@
 302 | this.askResponseText = undefined
 303 | this.askResponseImages = undefined
 304 |
-305 | /*
+305 | /_
 306 | Bug for the history books:
 307 | In the webview we use the ts as the chatrow key for the virtuoso list. Since we would update this ts right at the end of streaming, it would cause the view to flicker. The key prop has to be stable otherwise react has trouble reconciling items between renders, causing unmounting and remounting of components (flickering).
 308 | The lesson here is if you see flickering when rendering lists, it's likely because the key prop is not stable.
@@ -1246,7 +1246,7 @@
 804 | throw new Error("MCP hub not available")
 805 | }
 806 | // Wait for MCP servers to be connected before generating system prompt
-807 | await pWaitFor(() => mcpHub!.isConnecting !== true, { timeout: 10_000 }).catch(() => {
+807 | await pWaitFor(() => mcpHub!.isConnecting !== true, { timeout: 10*000 }).catch(() => {
 808 | console.error("MCP servers failed to connect in time")
 809 | })
 810 | }
@@ -1322,7 +1322,7 @@
 880 | const firstChunk = await iterator.next()
 881 | yield firstChunk.value
 882 | } catch (error) {
-883 | // note that this api_req_failed ask is unique in that we only present this option if the api hasn't streamed any content yet (ie it fails on the first chunk due), as it would allow them to hit a retry button. However if the api failed mid-stream, it could be in any arbitrary state where some tools may have executed, so that error is handled differently and requires cancelling the task entirely.
+883 | // note that this api*req_failed ask is unique in that we only present this option if the api hasn't streamed any content yet (ie it fails on the first chunk due), as it would allow them to hit a retry button. However if the api failed mid-stream, it could be in any arbitrary state where some tools may have executed, so that error is handled differently and requires cancelling the task entirely.
 884 | if (alwaysApproveResubmit) {
 885 | const errorMsg = error instanceof Error ? error.message : "Unknown error"
 886 | const requestDelay = requestDelaySeconds || 5

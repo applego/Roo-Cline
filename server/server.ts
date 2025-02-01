@@ -1,14 +1,15 @@
+import path from "path"
 import express from "express"
 import cors from "cors"
-import { WebSocketServerImpl } from "./websocket/websocket-server"
+import { WebSocketServerImpl } from "./src/websocket/websocket-server"
 import { WebSocketMessage } from "./types"
-import { ConfigStore } from "./config/ConfigStore"
-import { McpManager } from "./mcp/McpManager"
-import path from "path"
+import { ConfigStore } from "./src/config/ConfigStore"
+import { McpManager } from "./src/mcp/McpManager"
 
 const app = express()
 const port = process.env.PORT ? parseInt(process.env.PORT) : 3000
 const wsPort = process.env.WS_PORT ? parseInt(process.env.WS_PORT) : 3001
+const CONFIG_DIR = process.env.CONFIG_DIR || path.join(__dirname, "config")
 
 app.use(cors())
 app.use(express.json())
@@ -16,14 +17,16 @@ app.use(express.json())
 // 静的ファイルの提供（webview-uiのビルド成果物）
 app.use(express.static(path.join(__dirname, "../../webview-ui/build")))
 
-// コンフィグストア
-const configStore = new ConfigStore(process.env.CONFIG_DIR || path.join(__dirname, "../config"))
+// Initialize services
+const configStore = new ConfigStore(CONFIG_DIR)
+console.log("ConfigStore initialized with config directory:", CONFIG_DIR)
 
-// MCPマネージャー
 const mcpManager = new McpManager()
+console.log("McpManager initialized")
 
-// WebSocketサーバーのセットアップ
-const wss = new WebSocketServerImpl(wsPort)
+// Initialize WebSocket server
+const wss = new WebSocketServerImpl(wsPort, configStore, mcpManager)
+console.log(`WebSocket server started on port ${wsPort}`)
 
 // クライアントからのメッセージを処理
 wss.onMessage(async (message: WebSocketMessage, connection) => {
@@ -88,15 +91,21 @@ wss.onConnection((connection) => {
 	console.log(`New WebSocket connection: ${connection.id}`)
 })
 
-// HTTPサーバーの起動
+// Start HTTP server
 app.listen(port, () => {
-	console.log(`Server running at http://localhost:${port}`)
+	console.log(`HTTP server listening on port ${port}`)
 	console.log(`WebSocket server running at ws://localhost:${wsPort}`)
 })
 
-// シャットダウン時のクリーンアップ
+// Handle process termination
 process.on("SIGINT", () => {
-	console.log("Shutting down...")
+	console.log("\nShutting down server...")
+	wss.close()
+	process.exit(0)
+})
+
+process.on("SIGTERM", () => {
+	console.log("\nShutting down server...")
 	wss.close()
 	process.exit(0)
 })
