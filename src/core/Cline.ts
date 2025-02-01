@@ -882,7 +882,7 @@ export class Cline {
 		} catch (error) {
 			// note that this api_req_failed ask is unique in that we only present this option if the api hasn't streamed any content yet (ie it fails on the first chunk due), as it would allow them to hit a retry button. However if the api failed mid-stream, it could be in any arbitrary state where some tools may have executed, so that error is handled differently and requires cancelling the task entirely.
 			if (alwaysApproveResubmit) {
-				const errorMsg = error.message ?? "Unknown error"
+				const errorMsg = error instanceof Error ? error.message : "Unknown error"
 				const requestDelay = requestDelaySeconds || 5
 				// Automatically retry with delay
 				// Show countdown timer in error color
@@ -902,7 +902,7 @@ export class Cline {
 			} else {
 				const { response } = await this.ask(
 					"api_req_failed",
-					error.message ?? JSON.stringify(serializeError(error), null, 2),
+					error instanceof Error ? error.message : JSON.stringify(serializeError(error), null, 2),
 				)
 				if (response !== "yesButtonClicked") {
 					// this will never happen since if noButtonClicked, we will clear current task, aborting this instance
@@ -1146,7 +1146,11 @@ export class Cline {
 					validateToolUse(block.name, mode ?? defaultModeSlug)
 				} catch (error) {
 					this.consecutiveMistakeCount++
-					pushToolResult(formatResponse.toolError(error.message))
+					if (error instanceof Error) {
+						pushToolResult(formatResponse.toolError(error.message))
+					} else {
+						pushToolResult(formatResponse.toolError(String(error)))
+					}
 					break
 				}
 
@@ -1333,7 +1337,7 @@ export class Cline {
 								break
 							}
 						} catch (error) {
-							await handleError("writing file", error)
+							await handleError("writing file", error instanceof Error ? error : new Error(String(error)))
 							await this.diffViewProvider.reset()
 							break
 						}
@@ -1454,7 +1458,10 @@ export class Cline {
 								break
 							}
 						} catch (error) {
-							await handleError("applying diff", error)
+							await handleError(
+								"applying diff",
+								error instanceof Error ? error : new Error(String(error)),
+							)
 							await this.diffViewProvider.reset()
 							break
 						}
@@ -1495,7 +1502,7 @@ export class Cline {
 								break
 							}
 						} catch (error) {
-							await handleError("reading file", error)
+							await handleError("reading file", error instanceof Error ? error : new Error(String(error)))
 							break
 						}
 					}
@@ -1537,7 +1544,10 @@ export class Cline {
 								break
 							}
 						} catch (error) {
-							await handleError("listing files", error)
+							await handleError(
+								"listing files",
+								error instanceof Error ? error : new Error(String(error)),
+							)
 							break
 						}
 					}
@@ -1578,7 +1588,10 @@ export class Cline {
 								break
 							}
 						} catch (error) {
-							await handleError("parsing source code definitions", error)
+							await handleError(
+								"parsing source code definitions",
+								error instanceof Error ? error : new Error(String(error)),
+							)
 							break
 						}
 					}
@@ -1626,7 +1639,10 @@ export class Cline {
 								break
 							}
 						} catch (error) {
-							await handleError("searching files", error)
+							await handleError(
+								"searching files",
+								error instanceof Error ? error : new Error(String(error)),
+							)
 							break
 						}
 					}
@@ -1772,7 +1788,10 @@ export class Cline {
 							}
 						} catch (error) {
 							await this.browserSession.closeBrowser() // if any error occurs, the browser session is terminated
-							await handleError("executing browser action", error)
+							await handleError(
+								"executing browser action",
+								error instanceof Error ? error : new Error(String(error)),
+							)
 							break
 						}
 					}
@@ -1806,7 +1825,10 @@ export class Cline {
 								break
 							}
 						} catch (error) {
-							await handleError("executing command", error)
+							await handleError(
+								"executing command",
+								error instanceof Error ? error : new Error(String(error)),
+							)
 							break
 						}
 					}
@@ -1901,7 +1923,10 @@ export class Cline {
 								break
 							}
 						} catch (error) {
-							await handleError("executing MCP tool", error)
+							await handleError(
+								"executing MCP tool",
+								error instanceof Error ? error : new Error(String(error)),
+							)
 							break
 						}
 					}
@@ -1962,7 +1987,10 @@ export class Cline {
 								break
 							}
 						} catch (error) {
-							await handleError("accessing MCP resource", error)
+							await handleError(
+								"accessing MCP resource",
+								error instanceof Error ? error : new Error(String(error)),
+							)
 							break
 						}
 					}
@@ -1989,7 +2017,10 @@ export class Cline {
 								break
 							}
 						} catch (error) {
-							await handleError("asking question", error)
+							await handleError(
+								"asking question",
+								error instanceof Error ? error : new Error(String(error)),
+							)
 							break
 						}
 					}
@@ -2120,7 +2151,10 @@ export class Cline {
 								break
 							}
 						} catch (error) {
-							await handleError("inspecting site", error)
+							await handleError(
+								"inspecting site",
+								error instanceof Error ? error : new Error(String(error)),
+							)
 							break
 						}
 					}
@@ -2129,7 +2163,7 @@ export class Cline {
 		}
 
 		/*
-		Seeing out of bounds is fine, it means that the next too call is being built up and ready to add to assistantMessageContent to present. 
+		Seeing out of bounds is fine, it means that the next too call is being built up and ready to add to assistantMessageContent to present.
 		When you see the UI inactive during this, it means that a tool is breaking without presenting any UI. For example the write_to_file tool was breaking when relpath was undefined, and for invalid relpath it never presented UI.
 		*/
 		this.presentAssistantMessageLocked = false // this needs to be placed here, if not then calling this.presentAssistantMessage below would fail (sometimes) since it's locked
@@ -2354,7 +2388,7 @@ export class Cline {
 					this.abortTask() // if the stream failed, there's various states the task could be in (i.e. could have streamed some tools the user may have executed), so we just resort to replicating a cancel task
 					await abortStream(
 						"streaming_failed",
-						error.message ?? JSON.stringify(serializeError(error), null, 2),
+						error instanceof Error ? error.message : JSON.stringify(serializeError(error), null, 2),
 					)
 					const history = await this.providerRef.deref()?.getTaskWithId(this.taskId)
 					if (history) {
@@ -2648,5 +2682,37 @@ export class Cline {
 		}
 
 		return `<environment_details>\n${details.trim()}\n</environment_details>`
+	}
+
+	private async handleError(operation: string, error: unknown): Promise<void> {
+		if (error instanceof Error) {
+			await this.pushToolResult({
+				success: false,
+				error: `Error ${operation}: ${error.message}`,
+				errorDetails: serializeError(error),
+			})
+		} else {
+			await this.pushToolResult({
+				success: false,
+				error: `Error ${operation}: ${String(error)}`,
+				errorDetails: serializeError(new Error(String(error))),
+			})
+		}
+	}
+
+	private async handleApiError(error: unknown): Promise<void> {
+		const errorMessage = error instanceof Error ? error.message : "Unknown error"
+		const errorDetails = error instanceof Error ? error : new Error(String(error))
+
+		await this.pushToolResult({
+			success: false,
+			error: errorMessage,
+			errorDetails: serializeError(errorDetails),
+		})
+	}
+
+	private async pushToolResult(result: { success: boolean; error?: string; errorDetails?: any }) {
+		// Implementation of pushToolResult
+		console.error(`Error: ${result.error}`, result.errorDetails)
 	}
 }

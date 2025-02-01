@@ -1,0 +1,5 @@
+pnpm add -D @types/mocha
+pnpm install typescript@5.5.3 -D
+pnpm run compile
+cd webview-ui && pnpm add -D eslint @typescript-eslint/eslint-plugin @typescript-eslint/parser eslint-plugin-react eslint-plugin-react-hooks
+cd .. && pnpm run compile

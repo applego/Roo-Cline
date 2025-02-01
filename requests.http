@@ -1,0 +1,59 @@
+@hostname = localhost
+@port = 3002
+@baseurl = http://{{hostname}}:{{port}}
+
+### サーバーへのメッセージ送信 (POST /messages)
+POST {{baseurl}}/messages HTTP/1.1
+Content-Type: application/json
+
+{
+  "content": "これはテストメッセージです",
+  "sender": "テストユーザー"
+}
+
+### サーバーからのメッセージ取得 (GET /messages)
+GET {{baseurl}}/messages HTTP/1.1
+
+### 特定のID以降のメッセージを取得 (GET /messages?since=)
+GET {{baseurl}}/messages?since=1 HTTP/1.1
+
+### WebSocket接続のテスト (このリクエストはREST Clientで直接実行できません)
+# WebSocket接続は、ブラウザや専用のWebSocketクライアントを使用してテストする必要があります。
+# この部分のコードは、JavaScriptでWebSocketクライアントを実装する例です。
+
+```javascript
+const socket = new WebSocket("ws://{{hostname}}:{{port}}");
+
+socket.onopen = () => {
+  console.log("WebSocket接続が確立されました");
+
+  // 接続時にメッセージを送信
+  socket.send(JSON.stringify({
+    content: "WebSocket経由のメッセージ",
+    sender: "WebSocketクライアント"
+  }));
+};
+
+socket.onmessage = (event) => {
+  console.log("WebSocketメッセージを受信:", event.data);
+};
+
+socket.onerror = (error) => {
+  console.error("WebSocketエラー:", error);
+};
+
+socket.onclose = () => {
+  console.log("WebSocket接続が閉じられました");
+};
+```
+
+### エラーハンドリングのテスト (無効なJSONを送信)
+POST {{baseurl}}/messages HTTP/1.1
+Content-Type: application/json
+
+{
+  "content": "無効なJSON
+}
+
+### エラーハンドリングのテスト (存在しないエンドポイント)
+GET {{baseurl}}/notfound HTTP/1.1

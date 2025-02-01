@@ -1,28 +1,26 @@
-import "@testing-library/jest-dom"
+import '@testing-library/jest-dom'
 
-// Mock crypto.getRandomValues
-Object.defineProperty(window, "crypto", {
-	value: {
-		getRandomValues: function (buffer: Uint8Array) {
-			for (let i = 0; i < buffer.length; i++) {
-				buffer[i] = Math.floor(Math.random() * 256)
-			}
-			return buffer
-		},
-	},
-})
+// VSCode APIのモック
+const mockVSCodeApi = {
+  postMessage: jest.fn(),
+  getState: jest.fn(),
+  setState: jest.fn(),
+}
 
-// Mock matchMedia
-Object.defineProperty(window, "matchMedia", {
-	writable: true,
-	value: jest.fn().mockImplementation((query) => ({
-		matches: false,
-		media: query,
-		onchange: null,
-		addListener: jest.fn(), // deprecated
-		removeListener: jest.fn(), // deprecated
-		addEventListener: jest.fn(),
-		removeEventListener: jest.fn(),
-		dispatchEvent: jest.fn(),
-	})),
+// グローバルなacquireVsCodeApi関数の定義
+global.acquireVsCodeApi = jest.fn(() => mockVSCodeApi)
+
+// webview-ui-toolkitのモック
+jest.mock('@vscode/webview-ui-toolkit', () => ({
+  provideVSCodeDesignSystem: jest.fn(),
+  vsCodeButton: jest.fn(),
+  vsCodeTextField: jest.fn(),
+}))
+
+// Reset all mocks before each test
+beforeEach(() => {
+  jest.clearAllMocks()
+  mockVSCodeApi.postMessage.mockClear()
+  mockVSCodeApi.getState.mockClear()
+  mockVSCodeApi.setState.mockClear()
 })
