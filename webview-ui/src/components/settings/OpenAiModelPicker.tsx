@@ -7,9 +7,21 @@ import styled from "styled-components"
 import { useExtensionState } from "../../context/ExtensionStateContext"
 import { vscode } from "../../utils/vscode"
 import { highlightFzfMatch } from "../../utils/highlight"
+import { ApiConfiguration } from "../../../../src/shared/api"
+import { ModelInfoView, normalizeApiConfiguration } from "./ApiOptions"
 
-const OpenAiModelPicker: React.FC = () => {
-	const { apiConfiguration, setApiConfiguration, openAiModels, onUpdateApiConfig } = useExtensionState()
+interface OpenAiModelPickerProps {
+	apiConfiguration: ApiConfiguration
+	onUpdateApiConfiguration: (config: ApiConfiguration) => void
+}
+
+const OpenAiModelPicker = memo(({ apiConfiguration, onUpdateApiConfiguration }: OpenAiModelPickerProps) => {
+	const {
+		apiConfiguration: extensionApiConfiguration,
+		setApiConfiguration,
+		openAiModels,
+		onUpdateApiConfig,
+	} = useExtensionState()
 	const [searchTerm, setSearchTerm] = useState(apiConfiguration?.openAiModelId || "")
 	const [isDropdownVisible, setIsDropdownVisible] = useState(false)
 	const [selectedIndex, setSelectedIndex] = useState(-1)
@@ -207,7 +219,9 @@ const OpenAiModelPicker: React.FC = () => {
 			</div>
 		</>
 	)
-}
+})
+
+OpenAiModelPicker.displayName = "OpenAiModelPicker"
 
 export default OpenAiModelPicker
 
@@ -387,3 +401,5 @@ export const ModelDescriptionMarkdown = memo(
 		)
 	},
 )
+
+ModelDescriptionMarkdown.displayName = "ModelDescriptionMarkdown"

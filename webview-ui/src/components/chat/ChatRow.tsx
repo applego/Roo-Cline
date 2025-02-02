@@ -69,6 +69,8 @@ const ChatRow = memo(
 	deepEqual,
 )
 
+ChatRow.displayName = "ChatRow"
+
 export default ChatRow
 
 export const ChatRowContent = ({
@@ -89,7 +91,7 @@ export const ChatRowContent = ({
 		}
 	}, [isLast, message.say])
 	const [cost, apiReqCancelReason, apiReqStreamingFailedMessage] = useMemo(() => {
-		if (message.text != null && message.say === "api_req_started") {
+		if (message.text && message.say === "api_req_started") {
 			const info: ClineApiReqInfo = JSON.parse(message.text)
 			return [info.cost, info.cancelReason, info.streamingFailedMessage]
 		}
@@ -117,39 +119,49 @@ export const ChatRowContent = ({
 			case "error":
 				return [
 					<span
+						key="icon"
 						className="codicon codicon-error"
 						style={{ color: errorColor, marginBottom: "-1.5px" }}></span>,
-					<span style={{ color: errorColor, fontWeight: "bold" }}>Error</span>,
+					<span key="title" style={{ color: errorColor, fontWeight: "bold" }}>
+						Error
+					</span>,
 				]
 			case "mistake_limit_reached":
 				return [
 					<span
+						key="icon"
 						className="codicon codicon-error"
 						style={{ color: errorColor, marginBottom: "-1.5px" }}></span>,
-					<span style={{ color: errorColor, fontWeight: "bold" }}>Roo is having trouble...</span>,
+					<span key="title" style={{ color: errorColor, fontWeight: "bold" }}>
+						Roo is having trouble...
+					</span>,
 				]
 			case "command":
 				return [
 					isCommandExecuting ? (
-						<ProgressIndicator />
+						<ProgressIndicator key="icon" />
 					) : (
 						<span
+							key="icon"
 							className="codicon codicon-terminal"
 							style={{ color: normalColor, marginBottom: "-1.5px" }}></span>
 					),
-					<span style={{ color: normalColor, fontWeight: "bold" }}>Roo wants to execute this command:</span>,
+					<span key="title" style={{ color: normalColor, fontWeight: "bold" }}>
+						Roo wants to execute this command:
+					</span>,
 				]
 			case "use_mcp_server":
 				const mcpServerUse = JSON.parse(message.text || "{}") as ClineAskUseMcpServer
 				return [
 					isMcpServerResponding ? (
-						<ProgressIndicator />
+						<ProgressIndicator key="icon" />
 					) : (
 						<span
+							key="icon"
 							className="codicon codicon-server"
 							style={{ color: normalColor, marginBottom: "-1.5px" }}></span>
 					),
-					<span style={{ color: normalColor, fontWeight: "bold" }}>
+					<span key="title" style={{ color: normalColor, fontWeight: "bold" }}>
 						Roo wants to {mcpServerUse.type === "use_mcp_tool" ? "use a tool" : "access a resource"} on the{" "}
 						<code>{mcpServerUse.serverName}</code> MCP server:
 					</span>,
@@ -157,9 +169,12 @@ export const ChatRowContent = ({
 			case "completion_result":
 				return [
 					<span
+						key="icon"
 						className="codicon codicon-check"
 						style={{ color: successColor, marginBottom: "-1.5px" }}></span>,
-					<span style={{ color: successColor, fontWeight: "bold" }}>Task Completed</span>,
+					<span key="title" style={{ color: successColor, fontWeight: "bold" }}>
+						Task Completed
+					</span>,
 				]
 			case "api_req_retry_delayed":
 				return []
@@ -183,26 +198,26 @@ export const ChatRowContent = ({
 					</div>
 				)
 				return [
-					apiReqCancelReason != null ? (
+					apiReqCancelReason !== null ? (
 						apiReqCancelReason === "user_cancelled" ? (
 							getIconSpan("error", cancelledColor)
 						) : (
 							getIconSpan("error", errorColor)
 						)
-					) : cost != null ? (
+					) : cost !== null ? (
 						getIconSpan("check", successColor)
 					) : apiRequestFailedMessage ? (
 						getIconSpan("error", errorColor)
 					) : (
 						<ProgressIndicator />
 					),
-					apiReqCancelReason != null ? (
+					apiReqCancelReason !== null ? (
 						apiReqCancelReason === "user_cancelled" ? (
 							<span style={{ color: normalColor, fontWeight: "bold" }}>API Request Cancelled</span>
 						) : (
 							<span style={{ color: errorColor, fontWeight: "bold" }}>API Streaming Failed</span>
 						)
-					) : cost != null ? (
+					) : cost !== null ? (
 						<span style={{ color: normalColor, fontWeight: "bold" }}>API Request</span>
 					) : apiRequestFailedMessage ? (
 						<span style={{ color: errorColor, fontWeight: "bold" }}>API Request Failed</span>
@@ -213,9 +228,12 @@ export const ChatRowContent = ({
 			case "followup":
 				return [
 					<span
+						key="icon"
 						className="codicon codicon-question"
 						style={{ color: normalColor, marginBottom: "-1.5px" }}></span>,
-					<span style={{ color: normalColor, fontWeight: "bold" }}>Roo has a question:</span>,
+					<span key="title" style={{ color: normalColor, fontWeight: "bold" }}>
+						Roo has a question:
+					</span>,
 				]
 			default:
 				return [null, null]
@@ -510,7 +528,7 @@ export const ChatRowContent = ({
 								style={{
 									...headerStyle,
 									marginBottom:
-										(cost == null && apiRequestFailedMessage) || apiReqStreamingFailedMessage
+										(cost === null && apiRequestFailedMessage) || apiReqStreamingFailedMessage
 											? 10
 											: 0,
 									justifyContent: "space-between",
@@ -524,13 +542,13 @@ export const ChatRowContent = ({
 								<div style={{ display: "flex", alignItems: "center", gap: "10px", flexGrow: 1 }}>
 									{icon}
 									{title}
-									<VSCodeBadge style={{ opacity: cost != null && cost > 0 ? 1 : 0 }}>
+									<VSCodeBadge style={{ opacity: cost !== null && cost > 0 ? 1 : 0 }}>
 										${Number(cost || 0)?.toFixed(4)}
 									</VSCodeBadge>
 								</div>
 								<span className={`codicon codicon-chevron-${isExpanded ? "up" : "down"}`}></span>
 							</div>
-							{((cost == null && apiRequestFailedMessage) || apiReqStreamingFailedMessage) && (
+							{((cost === null && apiRequestFailedMessage) || apiReqStreamingFailedMessage) && (
 								<>
 									<p style={{ ...pStyle, color: "var(--vscode-errorForeground)" }}>
 										{apiRequestFailedMessage || apiReqStreamingFailedMessage}
@@ -538,7 +556,8 @@ export const ChatRowContent = ({
 											<>
 												<br />
 												<br />
-												It seems like you're having Windows PowerShell issues, please see this{" "}
+												It seems like you&apos;re having Windows PowerShell issues, please see
+												this{" "}
 												<a
 													href="https://github.com/cline/cline/wiki/TroubleShooting-%E2%80%90-%22PowerShell-is-not-recognized-as-an-internal-or-external-command%22"
 													style={{ color: "inherit", textDecoration: "underline" }}>
@@ -716,10 +735,10 @@ export const ChatRowContent = ({
 									</span>
 								</div>
 								<div>
-									Roo won't be able to view the command's output. Please update VSCode (
-									<code>CMD/CTRL + Shift + P</code> → "Update") and make sure you're using a supported
-									shell: zsh, bash, fish, or PowerShell (<code>CMD/CTRL + Shift + P</code> →
-									"Terminal: Select Default Profile").{" "}
+									Roo won&apos;t be able to view the command&apos;s output. Please update VSCode (
+									<code>CMD/CTRL + Shift + P</code> → &quot;Update&quot;) and make sure you&apos;re
+									using a supported shell: zsh, bash, fish, or PowerShell (
+									<code>CMD/CTRL + Shift + P</code> → &quot;Terminal: Select Default Profile&quot;).{" "}
 									<a
 										href="https://github.com/cline/cline/wiki/Troubleshooting-%E2%80%90-Shell-Integration-Unavailable"
 										style={{ color: "inherit", textDecoration: "underline" }}>
@@ -965,6 +984,8 @@ export const ChatRowContent = ({
 	}
 }
 
+ChatRowContent.displayName = "ChatRowContent"
+
 export const ProgressIndicator = () => (
 	<div
 		style={{
@@ -979,6 +1000,8 @@ export const ProgressIndicator = () => (
 		</div>
 	</div>
 )
+
+ProgressIndicator.displayName = "ProgressIndicator"
 
 const Markdown = memo(({ markdown, partial }: { markdown?: string; partial?: boolean }) => {
 	const [isHovering, setIsHovering] = useState(false)
@@ -1037,3 +1060,5 @@ const Markdown = memo(({ markdown, partial }: { markdown?: string; partial?: boo
 		</div>
 	)
 })
+
+Markdown.displayName = "Markdown"

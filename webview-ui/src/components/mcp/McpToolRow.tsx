@@ -110,4 +110,6 @@ const McpToolRow = ({ tool, serverName, alwaysAllowMcp }: McpToolRowProps) => {
 	)
 }
 
+McpToolRow.displayName = "McpToolRow"
+
 export default McpToolRow

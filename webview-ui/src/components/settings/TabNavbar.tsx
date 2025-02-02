@@ -18,7 +18,7 @@ type TooltipProps = {
 	align?: "left" | "center" | "right"
 }
 
-const Tooltip: React.FC<TooltipProps> = ({ text, isVisible, position, align = "center" }) => {
+const Tooltip = ({ text, isVisible, position, align = "center" }: TooltipProps) => {
 	let leftPosition = position.x
 	let triangleStyle: React.CSSProperties = {
 		left: "50%",
@@ -86,6 +86,8 @@ const Tooltip: React.FC<TooltipProps> = ({ text, isVisible, position, align = "c
 		</div>
 	)
 }
+
+Tooltip.displayName = "Tooltip"
 
 const TabNavbar = ({ onPlusClick, onHistoryClick, onSettingsClick }: TabNavbarProps) => {
 	const [tooltip, setTooltip] = useState<TooltipProps>({
@@ -163,5 +165,7 @@ const TabNavbar = ({ onPlusClick, onHistoryClick, onSettingsClick }: TabNavbarPr
 		</>
 	)
 }
+
+TabNavbar.displayName = "TabNavbar"
 
 export default TabNavbar

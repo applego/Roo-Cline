@@ -165,9 +165,12 @@ describe("UnboundHandler", () => {
 					chunks.push(chunk)
 				}
 				fail("Expected error to be thrown")
-			} catch (error) {
-				expect(error).toBeInstanceOf(Error)
-				expect(error.message).toBe("API Error")
+			} catch (error: unknown) {
+				if (error instanceof Error) {
+					expect(error.message).toBe("API Error")
+				} else {
+					fail("Expected error to be instance of Error")
+				}
 			}
 		})
 	})

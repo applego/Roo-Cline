@@ -231,7 +231,7 @@ describe("VsCodeLmHandler", () => {
 
 			await expect(async () => {
 				const stream = handler.createMessage(systemPrompt, messages)
-				for await (const _ of stream) {
+				for await (const chunk of stream) {
 					// consume stream
 				}
 			}).rejects.toThrow("API Error")

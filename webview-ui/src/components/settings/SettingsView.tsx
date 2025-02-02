@@ -142,46 +142,35 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 		}
 	}
 
-	const sliderLabelStyle = {
-		minWidth: "45px",
-		textAlign: "right" as const,
-		lineHeight: "20px",
-		paddingBottom: "2px",
+	const sliderStyle = {
+		width: "200px",
+		height: "2px",
+		WebkitAppearance: "none",
+		background: "var(--vscode-input-background)",
+		outline: "none",
+		opacity: "0.7",
+		transition: "opacity .2s",
+		cursor: "pointer",
 	}
 
-	const sliderStyle = {
-		flexGrow: 1,
-		maxWidth: "80%",
-		accentColor: "var(--vscode-button-background)",
-		height: "2px",
-	}
+	const sliderLabelStyle = {
+		minWidth: "40px",
+		textAlign: "right",
+		color: "var(--vscode-descriptionForeground)",
+	} as const
 
 	return (
-		<div
-			style={{
-				position: "fixed",
-				top: 0,
-				left: 0,
-				right: 0,
-				bottom: 0,
-				padding: "10px 0px 0px 20px",
-				display: "flex",
-				flexDirection: "column",
-				overflow: "hidden",
-			}}>
-			<div
-				style={{
-					display: "flex",
-					justifyContent: "space-between",
-					alignItems: "center",
-					marginBottom: "17px",
-					paddingRight: 17,
-				}}>
-				<h3 style={{ color: "var(--vscode-foreground)", margin: 0 }}>Settings</h3>
-				<VSCodeButton onClick={handleSubmit}>Done</VSCodeButton>
+		<div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+			<div style={{ padding: "20px 20px 0 20px" }}>
+				<div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "20px" }}>
+					<VSCodeButton appearance="icon" onClick={onDone}>
+						<span className="codicon codicon-chevron-left"></span>
+					</VSCodeButton>
+					<h2 style={{ margin: 0 }}>Settings</h2>
+				</div>
 			</div>
-			<div
-				style={{ flexGrow: 1, overflowY: "scroll", paddingRight: 8, display: "flex", flexDirection: "column" }}>
+
+			<div style={{ flex: 1, overflowY: "auto", padding: "0 20px" }}>
 				<div style={{ marginBottom: 40 }}>
 					<h3 style={{ color: "var(--vscode-foreground)", margin: "0 0 15px 0" }}>Provider Settings</h3>
 					<div style={{ marginBottom: 15 }}>
@@ -353,7 +342,7 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 						</VSCodeCheckbox>
 						<p style={{ fontSize: "12px", marginTop: "5px", color: "var(--vscode-descriptionForeground)" }}>
 							Enable auto-approval of individual MCP tools in the MCP Servers view (requires both this
-							setting and the tool's individual "Always allow" checkbox)
+							setting and the tool&apos;s individual &quot;Always allow&quot; checkbox)
 						</p>
 					</div>
 
@@ -393,8 +382,8 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 										marginTop: "5px",
 										color: "var(--vscode-descriptionForeground)",
 									}}>
-									Command prefixes that can be auto-executed when "Always approve execute operations"
-									is enabled.
+									Command prefixes that can be auto-executed when &quot;Always approve execute
+									operations&quot; is enabled.
 								</p>
 
 								<div style={{ display: "flex", gap: "5px", marginTop: "10px" }}>
@@ -744,5 +733,7 @@ const SettingsView = ({ onDone }: SettingsViewProps) => {
 		</div>
 	)
 }
+
+SettingsView.displayName = "SettingsView"
 
 export default memo(SettingsView)

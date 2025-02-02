@@ -31,15 +31,15 @@ const Announcement = ({ version, hideAnnouncement }: AnnouncementProps) => {
 			<h2 style={{ margin: "0 0 8px" }}>🎉{"  "}Introducing Roo Code 3.2</h2>
 
 			<p style={{ margin: "5px 0px" }}>
-				Our biggest update yet is here - we're officially changing our name from Roo Cline to Roo Code! After
-				growing beyond 50,000 installations, we're ready to chart our own course. Our heartfelt thanks to
-				everyone in the Cline community who helped us reach this milestone.
+				Our biggest update yet is here - we&apos;re officially changing our name from Roo Cline to Roo Code!
+				After growing beyond 50,000 installations, we&apos;re ready to chart our own course. Our heartfelt
+				thanks to everyone in the Cline community who helped us reach this milestone.
 			</p>
 
 			<h3 style={{ margin: "12px 0 8px" }}>Custom Modes: Celebrating Our New Identity</h3>
 			<p style={{ margin: "5px 0px" }}>
-				To mark this new chapter, we're introducing the power to shape Roo Code into any role you need! Create
-				specialized personas and create an entire team of agents with deeply customized prompts:
+				To mark this new chapter, we&apos;re introducing the power to shape Roo Code into any role you need!
+				Create specialized personas and create an entire team of agents with deeply customized prompts:
 				<ul style={{ margin: "4px 0 6px 20px", padding: 0 }}>
 					<li>QA Engineers who write thorough test cases and catch edge cases</li>
 					<li>Product Managers who excel at user stories and feature prioritization</li>
@@ -52,8 +52,8 @@ const Announcement = ({ version, hideAnnouncement }: AnnouncementProps) => {
 
 			<h3 style={{ margin: "12px 0 8px" }}>Join Us for the Next Chapter</h3>
 			<p style={{ margin: "5px 0px" }}>
-				We can't wait to see how you'll push Roo Code's potential even further! Share your custom modes and join
-				the discussion at{" "}
+				We can&apos;t wait to see how you&apos;ll push Roo Code&apos;s potential even further! Share your custom
+				modes and join the discussion at{" "}
 				<VSCodeLink href="https://www.reddit.com/r/RooCode" style={{ display: "inline" }}>
 					reddit.com/r/RooCode
 				</VSCodeLink>
@@ -62,5 +62,7 @@ const Announcement = ({ version, hideAnnouncement }: AnnouncementProps) => {
 		</div>
 	)
 }
+
+Announcement.displayName = "Announcement"
 
 export default memo(Announcement)

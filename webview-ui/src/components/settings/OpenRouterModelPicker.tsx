@@ -10,9 +10,15 @@ import { useExtensionState } from "../../context/ExtensionStateContext"
 import { vscode } from "../../utils/vscode"
 import { highlightFzfMatch } from "../../utils/highlight"
 import { ModelInfoView, normalizeApiConfiguration } from "./ApiOptions"
+import { ApiConfiguration } from "../../../../src/shared/api"
 
-const OpenRouterModelPicker: React.FC = () => {
-	const { apiConfiguration, setApiConfiguration, openRouterModels, onUpdateApiConfig } = useExtensionState()
+interface OpenRouterModelPickerProps {
+	apiConfiguration: ApiConfiguration
+	onUpdateApiConfiguration: (config: ApiConfiguration) => void
+}
+
+const OpenRouterModelPicker = memo(({ apiConfiguration, onUpdateApiConfiguration }: OpenRouterModelPickerProps) => {
+	const { apiConfiguration: extensionApiConfiguration, setApiConfiguration, openRouterModels } = useExtensionState()
 	const [searchTerm, setSearchTerm] = useState(apiConfiguration?.openRouterModelId || openRouterDefaultModelId)
 	const [isDropdownVisible, setIsDropdownVisible] = useState(false)
 	const [selectedIndex, setSelectedIndex] = useState(-1)
@@ -30,7 +36,7 @@ const OpenRouterModelPicker: React.FC = () => {
 		}
 
 		setApiConfiguration(apiConfig)
-		onUpdateApiConfig(apiConfig)
+		onUpdateApiConfiguration(apiConfig)
 		setSearchTerm(newModelId)
 	}
 
@@ -158,9 +164,15 @@ const OpenRouterModelPicker: React.FC = () => {
 				`}
 			</style>
 			<div>
-				<label htmlFor="model-search">
-					<span style={{ fontWeight: 500 }}>Model</span>
-				</label>
+				<div>
+					<div>OpenRouter&apos;s models</div>
+					<div>
+						Select from OpenRouter&apos;s curated list of models. You&apos;ll need an API key from{" "}
+						<a href="https://openrouter.ai/keys" target="_blank" rel="noopener noreferrer">
+							openrouter.ai/keys
+						</a>
+					</div>
+				</div>
 				<DropdownWrapper ref={dropdownRef}>
 					<VSCodeTextField
 						id="model-search"
@@ -231,18 +243,20 @@ const OpenRouterModelPicker: React.FC = () => {
 					<VSCodeLink style={{ display: "inline", fontSize: "inherit" }} href="https://openrouter.ai/models">
 						OpenRouter.
 					</VSCodeLink>
-					If you're unsure which model to choose, Roo Code works best with{" "}
+					If you&apos;re unsure which model to choose, Roo Code works best with{" "}
 					<VSCodeLink
 						style={{ display: "inline", fontSize: "inherit" }}
 						onClick={() => handleModelChange("anthropic/claude-3.5-sonnet:beta")}>
 						anthropic/claude-3.5-sonnet:beta.
 					</VSCodeLink>
-					You can also try searching "free" for no-cost options currently available.
+					You can also try searching &quot;free&quot; for no-cost options currently available.
 				</p>
 			)}
 		</>
 	)
-}
+})
+
+OpenRouterModelPicker.displayName = "OpenRouterModelPicker"
 
 export default OpenRouterModelPicker
 
@@ -435,3 +449,5 @@ export const ModelDescriptionMarkdown = memo(
 		)
 	},
 )
+
+ModelDescriptionMarkdown.displayName = "ModelDescriptionMarkdown"

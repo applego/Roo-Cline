@@ -925,7 +925,7 @@ export class Cline {
 		} catch (error) {
 			// note that this api_req_failed ask is unique in that we only present this option if the api hasn't streamed any content yet (ie it fails on the first chunk due), as it would allow them to hit a retry button. However if the api failed mid-stream, it could be in any arbitrary state where some tools may have executed, so that error is handled differently and requires cancelling the task entirely.
 			if (alwaysApproveResubmit) {
-				const errorMsg = error.message ?? "Unknown error"
+				const errorMsg = this.getErrorMessage(error)
 				const baseDelay = requestDelaySeconds || 5
 				const exponentialDelay = Math.ceil(baseDelay * Math.pow(2, retryAttempt))
 
@@ -951,10 +951,7 @@ export class Cline {
 				yield* this.attemptApiRequest(previousApiReqIndex, retryAttempt + 1)
 				return
 			} else {
-				const { response } = await this.ask(
-					"api_req_failed",
-					error.message ?? JSON.stringify(serializeError(error), null, 2),
-				)
+				const { response } = await this.ask("api_req_failed", this.getErrorMessage(error))
 				if (response !== "yesButtonClicked") {
 					// this will never happen since if noButtonClicked, we will clear current task, aborting this instance
 					throw new Error("API request failed")
@@ -1203,9 +1200,9 @@ export class Cline {
 						},
 						block.params,
 					)
-				} catch (error) {
+				} catch (error: unknown) {
 					this.consecutiveMistakeCount++
-					pushToolResult(formatResponse.toolError(error.message))
+					pushToolResult(formatResponse.toolError(this.getErrorMessage(error)))
 					break
 				}
 
@@ -1396,7 +1393,7 @@ export class Cline {
 								break
 							}
 						} catch (error) {
-							await handleError("writing file", error)
+							await this.handleError("writing file", error)
 							await this.diffViewProvider.reset()
 							break
 						}
@@ -1521,7 +1518,7 @@ export class Cline {
 								break
 							}
 						} catch (error) {
-							await handleError("applying diff", error)
+							await this.handleError("applying diff", error)
 							await this.diffViewProvider.reset()
 							break
 						}
@@ -1579,7 +1576,10 @@ export class Cline {
 								}
 							} catch (error) {
 								this.consecutiveMistakeCount++
-								await this.say("error", `Failed to parse operations JSON: ${error.message}`)
+								await this.say(
+									"error",
+									`Failed to parse operations JSON: ${this.getErrorMessage(error)}`,
+								)
 								pushToolResult(formatResponse.toolError("Invalid operations JSON format"))
 								break
 							}
@@ -1668,7 +1668,7 @@ export class Cline {
 							)
 							await this.diffViewProvider.reset()
 						} catch (error) {
-							handleError("insert content", error)
+							this.handleError("insert content", error)
 							await this.diffViewProvider.reset()
 						}
 						break
@@ -1735,7 +1735,10 @@ export class Cline {
 									}
 								} catch (error) {
 									this.consecutiveMistakeCount++
-									await this.say("error", `Failed to parse operations JSON: ${error.message}`)
+									await this.say(
+										"error",
+										`Failed to parse operations JSON: ${this.getErrorMessage(error)}`,
+									)
 									pushToolResult(formatResponse.toolError("Invalid operations JSON format"))
 									break
 								}
@@ -1835,7 +1838,7 @@ export class Cline {
 								break
 							}
 						} catch (error) {
-							await handleError("applying search and replace", error)
+							this.handleError("applying search and replace", error)
 							await this.diffViewProvider.reset()
 							break
 						}
@@ -1877,7 +1880,7 @@ export class Cline {
 								break
 							}
 						} catch (error) {
-							await handleError("reading file", error)
+							this.handleError("reading file", error)
 							break
 						}
 					}
@@ -1919,7 +1922,7 @@ export class Cline {
 								break
 							}
 						} catch (error) {
-							await handleError("listing files", error)
+							this.handleError("listing files", error)
 							break
 						}
 					}
@@ -1960,7 +1963,7 @@ export class Cline {
 								break
 							}
 						} catch (error) {
-							await handleError("parsing source code definitions", error)
+							this.handleError("parsing source code definitions", error)
 							break
 						}
 					}
@@ -2008,7 +2011,7 @@ export class Cline {
 								break
 							}
 						} catch (error) {
-							await handleError("searching files", error)
+							this.handleError("searching files", error)
 							break
 						}
 					}
@@ -2154,7 +2157,7 @@ export class Cline {
 							}
 						} catch (error) {
 							await this.browserSession.closeBrowser() // if any error occurs, the browser session is terminated
-							await handleError("executing browser action", error)
+							await this.handleError("executing browser action", error)
 							break
 						}
 					}
@@ -2188,7 +2191,7 @@ export class Cline {
 								break
 							}
 						} catch (error) {
-							await handleError("executing command", error)
+							await this.handleError("executing command", error)
 							break
 						}
 					}
@@ -2283,7 +2286,7 @@ export class Cline {
 								break
 							}
 						} catch (error) {
-							await handleError("executing MCP tool", error)
+							await this.handleError("executing MCP tool", error)
 							break
 						}
 					}
@@ -2344,7 +2347,7 @@ export class Cline {
 								break
 							}
 						} catch (error) {
-							await handleError("accessing MCP resource", error)
+							await this.handleError("accessing MCP resource", error)
 							break
 						}
 					}
@@ -2371,7 +2374,7 @@ export class Cline {
 								break
 							}
 						} catch (error) {
-							await handleError("asking question", error)
+							await this.handleError("asking question", error)
 							break
 						}
 					}
@@ -2438,7 +2441,7 @@ export class Cline {
 								break
 							}
 						} catch (error) {
-							await handleError("switching mode", error)
+							await this.handleError("switching mode", error)
 							break
 						}
 					}
@@ -2506,7 +2509,7 @@ export class Cline {
 								break
 							}
 						} catch (error) {
-							await handleError("creating new task", error)
+							await this.handleError("creating new task", error)
 							break
 						}
 					}
@@ -2638,7 +2641,7 @@ export class Cline {
 								break
 							}
 						} catch (error) {
-							await handleError("inspecting site", error)
+							await this.handleError("inspecting site", error)
 							break
 						}
 					}
@@ -2879,10 +2882,7 @@ export class Cline {
 				// abandoned happens when extension is no longer waiting for the cline instance to finish aborting (error is thrown here when any function in the for loop throws due to this.abort)
 				if (!this.abandoned) {
 					this.abortTask() // if the stream failed, there's various states the task could be in (i.e. could have streamed some tools the user may have executed), so we just resort to replicating a cancel task
-					await abortStream(
-						"streaming_failed",
-						error.message ?? JSON.stringify(serializeError(error), null, 2),
-					)
+					await abortStream("streaming_failed", this.getErrorMessage(error))
 					const history = await this.providerRef.deref()?.getTaskWithId(this.taskId)
 					if (history) {
 						await this.providerRef.deref()?.initClineWithHistoryItem(history.historyItem)
@@ -3198,9 +3198,9 @@ export class Cline {
 	// エラーハンドリングの修正
 	private getErrorMessage(error: unknown): string {
 		if (error instanceof Error) {
-			return error.message
+			return error.message ?? JSON.stringify(serializeError(error), null, 2)
 		}
-		return String(error)
+		return JSON.stringify(serializeError(error), null, 2)
 	}
 }
 

@@ -198,4 +198,6 @@ const MarkdownBlock = memo(({ markdown }: MarkdownBlockProps) => {
 	)
 })
 
+MarkdownBlock.displayName = "MarkdownBlock"
+
 export default MarkdownBlock

@@ -67,4 +67,6 @@ const ReasoningBlock: React.FC<ReasoningBlockProps> = ({
 	)
 }
 
+ReasoningBlock.displayName = "ReasoningBlock"
+
 export default ReasoningBlock

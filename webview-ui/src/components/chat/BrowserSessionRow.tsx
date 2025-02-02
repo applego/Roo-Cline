@@ -409,6 +409,8 @@ const BrowserSessionRow = memo((props: BrowserSessionRowProps) => {
 	return browserSessionRow
 }, deepEqual)
 
+BrowserSessionRow.displayName = "BrowserSessionRow"
+
 interface BrowserSessionRowContentProps extends Omit<BrowserSessionRowProps, "messages"> {
 	message: ClineMessage
 	setMaxActionHeight: (height: number) => void
@@ -494,6 +496,8 @@ const BrowserSessionRowContent = ({
 	}
 }
 
+BrowserSessionRowContent.displayName = "BrowserSessionRowContent"
+
 const BrowserActionBox = ({
 	action,
 	coordinate,
@@ -550,6 +554,8 @@ const BrowserActionBox = ({
 	)
 }
 
+BrowserActionBox.displayName = "BrowserActionBox"
+
 const BrowserCursor: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
 	// (can't use svgs in vsc extensions)
 	const cursorBase64 =
@@ -569,4 +575,6 @@ const BrowserCursor: React.FC<{ style?: React.CSSProperties }> = ({ style }) => 
 	)
 }
 
-export default BrowserSessionRow
+BrowserCursor.displayName = "BrowserCursor"
+
+export default memo(BrowserSessionRow)

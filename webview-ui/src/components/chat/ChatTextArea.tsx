@@ -873,4 +873,6 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 	},
 )
 
+ChatTextArea.displayName = "ChatTextArea"
+
 export default ChatTextArea

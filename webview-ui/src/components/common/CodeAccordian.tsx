@@ -119,5 +119,7 @@ const CodeAccordian = ({
 	)
 }
 
+CodeAccordian.displayName = "CodeAccordian"
+
 // memo does shallow comparison of props, so if you need it to re-render when a nested object changes, you need to pass a custom comparison function
 export default memo(CodeAccordian)

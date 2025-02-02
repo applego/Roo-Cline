@@ -6,6 +6,7 @@ import React, { memo, useMemo, useState, useEffect } from "react"
 import { Fzf } from "fzf"
 import { formatLargeNumber } from "../../utils/format"
 import { highlightFzfMatch } from "../../utils/highlight"
+import { AutoSizer, List } from "react-virtualized"
 
 type HistoryViewProps = {
 	onDone: () => void
@@ -13,12 +14,18 @@ type HistoryViewProps = {
 
 type SortOption = "newest" | "oldest" | "mostExpensive" | "mostTokens" | "mostRelevant"
 
+const getItemHeight = () => 150 // 固定の高さを返す関数
+
 const HistoryView = ({ onDone }: HistoryViewProps) => {
-	const { taskHistory } = useExtensionState()
+	const { taskHistory, setTaskHistory } = useExtensionState()
 	const [searchQuery, setSearchQuery] = useState("")
 	const [sortOption, setSortOption] = useState<SortOption>("newest")
 	const [lastNonRelevantSort, setLastNonRelevantSort] = useState<SortOption | null>("newest")
 	const [showCopyModal, setShowCopyModal] = useState(false)
+	const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
+	const [isDialogOpen, setIsDialogOpen] = useState(false)
+	const [dialogContent, setDialogContent] = useState("")
+	const [dialogTitle, setDialogTitle] = useState("")
 
 	useEffect(() => {
 		if (searchQuery && sortOption !== "mostRelevant" && !lastNonRelevantSort) {
@@ -31,7 +38,7 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 	}, [searchQuery, sortOption, lastNonRelevantSort])
 
 	const handleHistorySelect = (id: string) => {
-		vscode.postMessage({ type: "showTaskWithId", text: id })
+		setSelectedItemId(id)
 	}
 
 	const handleDeleteHistoryItem = (id: string) => {
@@ -145,310 +152,115 @@ const HistoryView = ({ onDone }: HistoryViewProps) => {
 				`}
 			</style>
 			{showCopyModal && <div className="copy-modal">Prompt Copied to Clipboard</div>}
-			<div
-				style={{
-					position: "fixed",
-					top: 0,
-					left: 0,
-					right: 0,
-					bottom: 0,
-					display: "flex",
-					flexDirection: "column",
-					overflow: "hidden",
-				}}>
-				<div
-					style={{
-						display: "flex",
-						justifyContent: "space-between",
-						alignItems: "center",
-						padding: "10px 17px 10px 20px",
-					}}>
-					<h3 style={{ color: "var(--vscode-foreground)", margin: 0 }}>History</h3>
-					<VSCodeButton onClick={onDone}>Done</VSCodeButton>
-				</div>
-				<div style={{ padding: "5px 17px 6px 17px" }}>
-					<div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-						<VSCodeTextField
-							style={{ width: "100%" }}
-							placeholder="Fuzzy search history..."
-							value={searchQuery}
-							onInput={(e) => {
-								const newValue = (e.target as HTMLInputElement)?.value
-								setSearchQuery(newValue)
-								if (newValue && !searchQuery && sortOption !== "mostRelevant") {
-									setLastNonRelevantSort(sortOption)
-									setSortOption("mostRelevant")
-								}
-							}}>
-							<div
-								slot="start"
-								className="codicon codicon-search"
-								style={{ fontSize: 13, marginTop: 2.5, opacity: 0.8 }}></div>
-							{searchQuery && (
-								<div
-									className="input-icon-button codicon codicon-close"
-									aria-label="Clear search"
-									onClick={() => setSearchQuery("")}
-									slot="end"
-									style={{
-										display: "flex",
-										justifyContent: "center",
-										alignItems: "center",
-										height: "100%",
-									}}
-								/>
-							)}
-						</VSCodeTextField>
-						<VSCodeRadioGroup
-							style={{ display: "flex", flexWrap: "wrap" }}
-							value={sortOption}
-							role="radiogroup"
-							onChange={(e) => setSortOption((e.target as HTMLInputElement).value as SortOption)}>
-							<VSCodeRadio value="newest">Newest</VSCodeRadio>
-							<VSCodeRadio value="oldest">Oldest</VSCodeRadio>
-							<VSCodeRadio value="mostExpensive">Most Expensive</VSCodeRadio>
-							<VSCodeRadio value="mostTokens">Most Tokens</VSCodeRadio>
-							<VSCodeRadio
-								value="mostRelevant"
-								disabled={!searchQuery}
-								style={{ opacity: searchQuery ? 1 : 0.5 }}>
-								Most Relevant
-							</VSCodeRadio>
-						</VSCodeRadioGroup>
+			<div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+				<div style={{ padding: "20px 20px 0 20px" }}>
+					<div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "20px" }}>
+						<VSCodeButton appearance="icon" onClick={onDone}>
+							<span className="codicon codicon-chevron-left"></span>
+						</VSCodeButton>
+						<h2 style={{ margin: 0 }}>History</h2>
 					</div>
 				</div>
-				<div style={{ flexGrow: 1, overflowY: "auto", margin: 0 }}>
-					<Virtuoso
-						style={{
-							flexGrow: 1,
-							overflowY: "scroll",
-						}}
-						data={taskHistorySearchResults}
-						data-testid="virtuoso-container"
-						components={{
-							List: React.forwardRef((props, ref) => (
-								<div {...props} ref={ref} data-testid="virtuoso-item-list" />
-							)),
-						}}
-						itemContent={(index, item) => (
-							<div
-								key={item.id}
-								data-testid={`task-item-${item.id}`}
-								className="history-item"
-								style={{
-									cursor: "pointer",
-									borderBottom:
-										index < taskHistory.length - 1
-											? "1px solid var(--vscode-panel-border)"
-											: "none",
-								}}
-								onClick={() => handleHistorySelect(item.id)}>
-								<div
-									style={{
-										display: "flex",
-										flexDirection: "column",
-										gap: "8px",
-										padding: "12px 20px",
-										position: "relative",
-									}}>
-									<div
-										style={{
-											display: "flex",
-											justifyContent: "space-between",
-											alignItems: "center",
-										}}>
-										<span
-											style={{
-												color: "var(--vscode-descriptionForeground)",
-												fontWeight: 500,
-												fontSize: "0.85em",
-												textTransform: "uppercase",
-											}}>
-											{formatDate(item.ts)}
-										</span>
-										<div style={{ display: "flex", gap: "4px" }}>
-											<button
-												title="Copy Prompt"
-												className="copy-button"
-												data-appearance="icon"
-												onClick={(e) => handleCopyTask(e, item.task)}>
-												<span className="codicon codicon-copy"></span>
-											</button>
-											<button
-												title="Delete Task"
-												className="delete-button"
-												data-appearance="icon"
-												onClick={(e) => {
-													e.stopPropagation()
-													handleDeleteHistoryItem(item.id)
-												}}>
-												<span className="codicon codicon-trash"></span>
-											</button>
-										</div>
-									</div>
-									<div
-										style={{
-											fontSize: "var(--vscode-font-size)",
-											color: "var(--vscode-foreground)",
-											display: "-webkit-box",
-											WebkitLineClamp: 3,
-											WebkitBoxOrient: "vertical",
-											overflow: "hidden",
-											whiteSpace: "pre-wrap",
-											wordBreak: "break-word",
-											overflowWrap: "anywhere",
-										}}
-										dangerouslySetInnerHTML={{ __html: item.task }}
-									/>
-									<div style={{ display: "flex", flexDirection: "column", gap: "4px" }}>
-										<div
-											data-testid="tokens-container"
-											style={{
-												display: "flex",
-												justifyContent: "space-between",
-												alignItems: "center",
-											}}>
-											<div
-												style={{
-													display: "flex",
-													alignItems: "center",
-													gap: "4px",
-													flexWrap: "wrap",
-												}}>
-												<span
-													style={{
-														fontWeight: 500,
-														color: "var(--vscode-descriptionForeground)",
-													}}>
-													Tokens:
-												</span>
-												<span
-													data-testid="tokens-in"
-													style={{
-														display: "flex",
-														alignItems: "center",
-														gap: "3px",
-														color: "var(--vscode-descriptionForeground)",
-													}}>
-													<i
-														className="codicon codicon-arrow-up"
-														style={{
-															fontSize: "12px",
-															fontWeight: "bold",
-															marginBottom: "-2px",
-														}}
-													/>
-													{formatLargeNumber(item.tokensIn || 0)}
-												</span>
-												<span
-													data-testid="tokens-out"
-													style={{
-														display: "flex",
-														alignItems: "center",
-														gap: "3px",
-														color: "var(--vscode-descriptionForeground)",
-													}}>
-													<i
-														className="codicon codicon-arrow-down"
-														style={{
-															fontSize: "12px",
-															fontWeight: "bold",
-															marginBottom: "-2px",
-														}}
-													/>
-													{formatLargeNumber(item.tokensOut || 0)}
-												</span>
-											</div>
-											{!item.totalCost && <ExportButton itemId={item.id} />}
-										</div>
 
-										{!!item.cacheWrites && (
+				<div style={{ flex: 1, overflowY: "auto", paddingBottom: "20px" }}>
+					<AutoSizer>
+						{({ height, width }: { height: number; width: number }) => (
+							<List height={height} itemCount={taskHistory.length} itemSize={getItemHeight} width={width}>
+								{({ index, style }: { index: number; style: React.CSSProperties }) => {
+									const item = taskHistory[index]
+									return (
+										<div
+											key={item.id}
+											style={{
+												...style,
+												padding: "0 20px",
+											}}>
 											<div
-												data-testid="cache-container"
+												className="history-item"
+												onClick={() => handleHistorySelect(item.id)}
 												style={{
-													display: "flex",
-													alignItems: "center",
-													gap: "4px",
-													flexWrap: "wrap",
+													padding: "12px",
+													cursor: "pointer",
+													borderRadius: "4px",
+													backgroundColor:
+														selectedItemId === item.id
+															? "var(--vscode-list-activeSelectionBackground)"
+															: undefined,
+													color:
+														selectedItemId === item.id
+															? "var(--vscode-list-activeSelectionForeground)"
+															: undefined,
 												}}>
-												<span
-													style={{
-														fontWeight: 500,
-														color: "var(--vscode-descriptionForeground)",
-													}}>
-													Cache:
-												</span>
-												<span
-													data-testid="cache-writes"
-													style={{
-														display: "flex",
-														alignItems: "center",
-														gap: "3px",
-														color: "var(--vscode-descriptionForeground)",
-													}}>
-													<i
-														className="codicon codicon-database"
-														style={{
-															fontSize: "12px",
-															fontWeight: "bold",
-															marginBottom: "-1px",
-														}}
-													/>
-													+{formatLargeNumber(item.cacheWrites || 0)}
-												</span>
-												<span
-													data-testid="cache-reads"
-													style={{
-														display: "flex",
-														alignItems: "center",
-														gap: "3px",
-														color: "var(--vscode-descriptionForeground)",
-													}}>
-													<i
-														className="codicon codicon-arrow-right"
-														style={{
-															fontSize: "12px",
-															fontWeight: "bold",
-															marginBottom: 0,
-														}}
-													/>
-													{formatLargeNumber(item.cacheReads || 0)}
-												</span>
-											</div>
-										)}
-										{!!item.totalCost && (
-											<div
-												style={{
-													display: "flex",
-													justifyContent: "space-between",
-													alignItems: "center",
-													marginTop: -2,
-												}}>
-												<div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+												<div style={{ marginBottom: "8px" }}>
 													<span
 														style={{
+															color:
+																selectedItemId === item.id
+																	? "var(--vscode-list-activeSelectionForeground)"
+																	: "var(--vscode-descriptionForeground)",
 															fontWeight: 500,
-															color: "var(--vscode-descriptionForeground)",
+															fontSize: "0.85em",
+															textTransform: "uppercase",
 														}}>
-														API Cost:
-													</span>
-													<span style={{ color: "var(--vscode-descriptionForeground)" }}>
-														${item.totalCost?.toFixed(4)}
+														{formatDate(item.ts)}
 													</span>
 												</div>
-												<ExportButton itemId={item.id} />
+												<div
+													style={{
+														fontSize: "var(--vscode-font-size)",
+														color:
+															selectedItemId === item.id
+																? "var(--vscode-list-activeSelectionForeground)"
+																: "var(--vscode-descriptionForeground)",
+														marginBottom: "8px",
+														whiteSpace: "pre-wrap",
+														wordBreak: "break-word",
+														overflowWrap: "anywhere",
+													}}>
+													{item.task}
+												</div>
+												<div
+													style={{
+														fontSize: "0.85em",
+														color:
+															selectedItemId === item.id
+																? "var(--vscode-list-activeSelectionForeground)"
+																: "var(--vscode-descriptionForeground)",
+													}}>
+													<span>
+														Tokens: ↑{formatLargeNumber(item.tokensIn || 0)} ↓
+														{formatLargeNumber(item.tokensOut || 0)}
+													</span>
+													{!!item.cacheWrites && (
+														<>
+															{" • "}
+															<span>
+																Cache: +{formatLargeNumber(item.cacheWrites || 0)} →{" "}
+																{formatLargeNumber(item.cacheReads || 0)}
+															</span>
+														</>
+													)}
+													{!!item.totalCost && (
+														<>
+															{" • "}
+															<span>API Cost: ${item.totalCost?.toFixed(4)}</span>
+														</>
+													)}
+												</div>
 											</div>
-										)}
-									</div>
-								</div>
-							</div>
+										</div>
+									)
+								}}
+							</List>
 						)}
-					/>
+					</AutoSizer>
 				</div>
 			</div>
 		</>
 	)
 }
+
+HistoryView.displayName = "HistoryView"
 
 const ExportButton = ({ itemId }: { itemId: string }) => (
 	<VSCodeButton

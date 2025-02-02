@@ -575,7 +575,7 @@ const PromptsView = ({ onDone }: PromptsViewProps) => {
 								color: "var(--vscode-descriptionForeground)",
 								marginBottom: "8px",
 							}}>
-							Define Roo's expertise and personality for this mode. This description shapes how Roo
+							Define Roo&apos;s expertise and personality for this mode. This description shapes how Roo
 							presents itself and approaches tasks.
 						</div>
 						<VSCodeTextArea
@@ -1094,7 +1094,7 @@ const PromptsView = ({ onDone }: PromptsViewProps) => {
 										color: "var(--vscode-descriptionForeground)",
 										marginBottom: "8px",
 									}}>
-									Define Roo's expertise and personality for this mode.
+									Define Roo&apos;s expertise and personality for this mode.
 								</div>
 								<VSCodeTextArea
 									value={newModeRoleDefinition}
@@ -1260,5 +1260,7 @@ const PromptsView = ({ onDone }: PromptsViewProps) => {
 		</div>
 	)
 }
+
+PromptsView.displayName = "PromptsView"
 
 export default PromptsView

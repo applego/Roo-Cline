@@ -56,4 +56,6 @@ const McpResourceRow = ({ item }: McpResourceRowProps) => {
 	)
 }
 
+McpResourceRow.displayName = "McpResourceRow"
+
 export default McpResourceRow

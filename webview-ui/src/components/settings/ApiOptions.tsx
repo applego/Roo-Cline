@@ -1124,7 +1124,7 @@ const ApiOptions = ({ apiErrorMessage, modelIdErrorMessage }: ApiOptionsProps) =
 						<VSCodeLink href="https://lmstudio.ai/docs" style={{ display: "inline", fontSize: "inherit" }}>
 							quickstart guide.
 						</VSCodeLink>
-						You will also need to start LM Studio's{" "}
+						You will also need to start LM Studio&apos;s{" "}
 						<VSCodeLink
 							href="https://lmstudio.ai/docs/basics/server"
 							style={{ display: "inline", fontSize: "inherit" }}>
@@ -1379,6 +1379,8 @@ const ApiOptions = ({ apiErrorMessage, modelIdErrorMessage }: ApiOptionsProps) =
 		</div>
 	)
 }
+
+ApiOptions.displayName = "ApiOptions"
 
 export function getGlamaAuthUrl(uriScheme?: string) {
 	const callbackUrl = `${uriScheme || "vscode"}://rooveterinaryinc.roo-cline/glama`

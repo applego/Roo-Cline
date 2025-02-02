@@ -28,28 +28,17 @@ const McpView = ({ onDone }: McpViewProps) => {
 	} = useExtensionState()
 
 	return (
-		<div
-			style={{
-				position: "fixed",
-				top: 0,
-				left: 0,
-				right: 0,
-				bottom: 0,
-				display: "flex",
-				flexDirection: "column",
-			}}>
-			<div
-				style={{
-					display: "flex",
-					justifyContent: "space-between",
-					alignItems: "center",
-					padding: "10px 17px 10px 20px",
-				}}>
-				<h3 style={{ color: "var(--vscode-foreground)", margin: 0 }}>MCP Servers</h3>
-				<VSCodeButton onClick={onDone}>Done</VSCodeButton>
+		<div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+			<div style={{ padding: "20px 20px 0 20px" }}>
+				<div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "20px" }}>
+					<VSCodeButton appearance="icon" onClick={onDone}>
+						<span className="codicon codicon-chevron-left"></span>
+					</VSCodeButton>
+					<h2 style={{ margin: 0 }}>MCP</h2>
+				</div>
 			</div>
 
-			<div style={{ flex: 1, overflow: "auto", padding: "0 20px" }}>
+			<div style={{ flex: 1, overflowY: "auto", padding: "0 20px" }}>
 				<div
 					style={{
 						color: "var(--vscode-foreground)",
@@ -62,12 +51,12 @@ const McpView = ({ onDone }: McpViewProps) => {
 						Model Context Protocol
 					</VSCodeLink>{" "}
 					enables communication with locally running MCP servers that provide additional tools and resources
-					to extend Roo's capabilities. You can use{" "}
+					to extend Roo&apos;s capabilities. You can use{" "}
 					<VSCodeLink href="https://github.com/modelcontextprotocol/servers" style={{ display: "inline" }}>
 						community-made servers
 					</VSCodeLink>{" "}
-					or ask Roo to create new tools specific to your workflow (e.g., "add a tool that gets the latest npm
-					docs").
+					or ask Roo to create new tools specific to your workflow (e.g., &quot;add a tool that gets the
+					latest npm docs&quot;).
 				</div>
 
 				<McpEnabledToggle />
@@ -89,9 +78,9 @@ const McpView = ({ onDone }: McpViewProps) => {
 									marginTop: "5px",
 									color: "var(--vscode-descriptionForeground)",
 								}}>
-								When enabled, Roo can help you create new MCP servers via commands like "add a new tool
-								to...". If you don't need to create MCP servers you can disable this to reduce Roo's
-								token usage.
+								When enabled, Roo can help you create new MCP servers via commands like &quot;add a new
+								tool to...&quot;. If you don&apos;t need to create MCP servers you can disable this to
+								reduce Roo&apos;s token usage.
 							</p>
 						</div>
 
@@ -125,6 +114,8 @@ const McpView = ({ onDone }: McpViewProps) => {
 		</div>
 	)
 }
+
+McpView.displayName = "McpView"
 
 // Server Row Component
 const ServerRow = ({ server, alwaysAllowMcp }: { server: McpServer; alwaysAllowMcp?: boolean }) => {
