@@ -14,8 +14,9 @@ import { convertTextMateToHljs } from "../utils/textMateToHljs"
 import { findLastIndex } from "../../../src/shared/array"
 import { McpServer } from "../../../src/shared/mcp"
 import { checkExistKey } from "../../../src/shared/checkExistApiConfig"
-import { Mode } from "../../../src/core/prompts/types"
-import { CustomPrompts, defaultModeSlug, defaultPrompts } from "../../../src/shared/modes"
+import { Mode, CustomModePrompts, defaultModeSlug, defaultPrompts, ModeConfig } from "../../../src/shared/modes"
+import { CustomSupportPrompts } from "../../../src/shared/support-prompt"
+import { experimentDefault, ExperimentId } from "../../../src/shared/experiments"
 
 export interface ExtensionStateContextType extends ExtensionState {
 	didHydrateState: boolean
@@ -26,6 +27,7 @@ export interface ExtensionStateContextType extends ExtensionState {
 	openAiModels: string[]
 	mcpServers: McpServer[]
 	filePaths: string[]
+	openedTabs: Array<{ label: string; isActive: boolean; path?: string }>
 	setApiConfiguration: (config: ApiConfiguration) => void
 	setCustomInstructions: (value?: string) => void
 	setAlwaysAllowReadOnly: (value: boolean) => void
@@ -33,6 +35,7 @@ export interface ExtensionStateContextType extends ExtensionState {
 	setAlwaysAllowExecute: (value: boolean) => void
 	setAlwaysAllowBrowser: (value: boolean) => void
 	setAlwaysAllowMcp: (value: boolean) => void
+	setAlwaysAllowModeSwitch: (value: boolean) => void
 	setShowAnnouncement: (value: boolean) => void
 	setAllowedCommands: (value: string[]) => void
 	setSoundEnabled: (value: boolean) => void
@@ -49,22 +52,28 @@ export interface ExtensionStateContextType extends ExtensionState {
 	setTerminalOutputLineLimit: (value: number) => void
 	mcpEnabled: boolean
 	setMcpEnabled: (value: boolean) => void
+	enableMcpServerCreation: boolean
+	setEnableMcpServerCreation: (value: boolean) => void
 	alwaysApproveResubmit?: boolean
 	setAlwaysApproveResubmit: (value: boolean) => void
 	requestDelaySeconds: number
 	setRequestDelaySeconds: (value: number) => void
+	rateLimitSeconds: number
+	setRateLimitSeconds: (value: number) => void
 	setCurrentApiConfigName: (value: string) => void
 	setListApiConfigMeta: (value: ApiConfigMeta[]) => void
 	onUpdateApiConfig: (apiConfig: ApiConfiguration) => void
 	mode: Mode
 	setMode: (value: Mode) => void
-	setCustomPrompts: (value: CustomPrompts) => void
+	setCustomModePrompts: (value: CustomModePrompts) => void
+	setCustomSupportPrompts: (value: CustomSupportPrompts) => void
 	enhancementApiConfigId?: string
 	setEnhancementApiConfigId: (value: string) => void
-	experimentalDiffStrategy: boolean
-	setExperimentalDiffStrategy: (value: boolean) => void
-	autoApprovalEnabled?: boolean
+	setExperimentEnabled: (id: ExperimentId, enabled: boolean) => void
 	setAutoApprovalEnabled: (value: boolean) => void
+	handleInputChange: (field: keyof ApiConfiguration, softUpdate?: boolean) => (event: any) => void
+	customModes: ModeConfig[]
+	setCustomModes: (value: ModeConfig[]) => void
 }
 
 export const ExtensionStateContext = createContext<ExtensionStateContextType | undefined>(undefined)
@@ -86,16 +95,21 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		screenshotQuality: 75,
 		terminalOutputLineLimit: 500,
 		mcpEnabled: true,
+		enableMcpServerCreation: true,
 		alwaysApproveResubmit: false,
 		requestDelaySeconds: 5,
+		rateLimitSeconds: 0, // Minimum time between successive requests (0 = disabled)
 		currentApiConfigName: "default",
 		listApiConfigMeta: [],
 		mode: defaultModeSlug,
-		customPrompts: defaultPrompts,
+		customModePrompts: defaultPrompts,
+		customSupportPrompts: {},
+		experiments: experimentDefault,
 		enhancementApiConfigId: "",
-		experimentalDiffStrategy: false,
 		autoApprovalEnabled: false,
+		customModes: [],
 	})
+
 	const [didHydrateState, setDidHydrateState] = useState(false)
 	const [showWelcome, setShowWelcome] = useState(false)
 	const [theme, setTheme] = useState<any>(undefined)
@@ -103,6 +117,7 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 	const [glamaModels, setGlamaModels] = useState<Record<string, ModelInfo>>({
 		[glamaDefaultModelId]: glamaDefaultModelInfo,
 	})
+	const [openedTabs, setOpenedTabs] = useState<Array<{ label: string; isActive: boolean; path?: string }>>([])
 	const [openRouterModels, setOpenRouterModels] = useState<Record<string, ModelInfo>>({
 		[openRouterDefaultModelId]: openRouterDefaultModelInfo,
 	})
@@ -112,18 +127,47 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 
 	const setListApiConfigMeta = useCallback(
 		(value: ApiConfigMeta[]) => setState((prevState) => ({ ...prevState, listApiConfigMeta: value })),
-		[setState],
+		[],
 	)
 
-	const onUpdateApiConfig = useCallback(
-		(apiConfig: ApiConfiguration) => {
+	const onUpdateApiConfig = useCallback((apiConfig: ApiConfiguration) => {
+		setState((currentState) => {
 			vscode.postMessage({
 				type: "upsertApiConfiguration",
-				text: state.currentApiConfigName,
+				text: currentState.currentApiConfigName,
 				apiConfiguration: apiConfig,
 			})
+			return currentState // No state update needed
+		})
+	}, [])
+
+	const handleInputChange = useCallback(
+		// Returns a function that handles an input change event for a specific API configuration field.
+		// The optional "softUpdate" flag determines whether to immediately update local state or send an external update.
+		(field: keyof ApiConfiguration, softUpdate?: boolean) => (event: any) => {
+			// Use the functional form of setState to ensure the latest state is used in the update logic.
+			setState((currentState) => {
+				if (softUpdate) {
+					// Return a new state object with the updated apiConfiguration.
+					// This will trigger a re-render with the new configuration value.
+					return {
+						...currentState,
+						apiConfiguration: { ...currentState.apiConfiguration, [field]: event.target.value },
+					}
+				} else {
+					// For non-soft updates, send a message to the VS Code extension with the updated config.
+					// This side effect communicates the change without updating local React state.
+					vscode.postMessage({
+						type: "upsertApiConfiguration",
+						text: currentState.currentApiConfigName,
+						apiConfiguration: { ...currentState.apiConfiguration, [field]: event.target.value },
+					})
+					// Return the unchanged state as no local state update is intended in this branch.
+					return currentState
+				}
+			})
 		},
-		[state],
+		[],
 	)
 
 	const handleMessage = useCallback(
@@ -149,7 +193,11 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 					break
 				}
 				case "workspaceUpdated": {
-					setFilePaths(message.filePaths ?? [])
+					const paths = message.filePaths ?? []
+					const tabs = message.openedTabs ?? []
+
+					setFilePaths(paths)
+					setOpenedTabs(tabs)
 					break
 				}
 				case "partialMessage": {
@@ -216,11 +264,13 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		openAiModels,
 		mcpServers,
 		filePaths,
+		openedTabs,
 		soundVolume: state.soundVolume,
 		fuzzyMatchThreshold: state.fuzzyMatchThreshold,
 		writeDelayMs: state.writeDelayMs,
 		screenshotQuality: state.screenshotQuality,
-		experimentalDiffStrategy: state.experimentalDiffStrategy ?? false,
+		setExperimentEnabled: (id, enabled) =>
+			setState((prevState) => ({ ...prevState, experiments: { ...prevState.experiments, [id]: enabled } })),
 		setApiConfiguration: (value) =>
 			setState((prevState) => ({
 				...prevState,
@@ -232,6 +282,7 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		setAlwaysAllowExecute: (value) => setState((prevState) => ({ ...prevState, alwaysAllowExecute: value })),
 		setAlwaysAllowBrowser: (value) => setState((prevState) => ({ ...prevState, alwaysAllowBrowser: value })),
 		setAlwaysAllowMcp: (value) => setState((prevState) => ({ ...prevState, alwaysAllowMcp: value })),
+		setAlwaysAllowModeSwitch: (value) => setState((prevState) => ({ ...prevState, alwaysAllowModeSwitch: value })),
 		setShowAnnouncement: (value) => setState((prevState) => ({ ...prevState, shouldShowAnnouncement: value })),
 		setAllowedCommands: (value) => setState((prevState) => ({ ...prevState, allowedCommands: value })),
 		setSoundEnabled: (value) => setState((prevState) => ({ ...prevState, soundEnabled: value })),
@@ -246,18 +297,22 @@ export const ExtensionStateContextProvider: React.FC<{ children: React.ReactNode
 		setTerminalOutputLineLimit: (value) =>
 			setState((prevState) => ({ ...prevState, terminalOutputLineLimit: value })),
 		setMcpEnabled: (value) => setState((prevState) => ({ ...prevState, mcpEnabled: value })),
+		setEnableMcpServerCreation: (value) =>
+			setState((prevState) => ({ ...prevState, enableMcpServerCreation: value })),
 		setAlwaysApproveResubmit: (value) => setState((prevState) => ({ ...prevState, alwaysApproveResubmit: value })),
 		setRequestDelaySeconds: (value) => setState((prevState) => ({ ...prevState, requestDelaySeconds: value })),
+		setRateLimitSeconds: (value) => setState((prevState) => ({ ...prevState, rateLimitSeconds: value })),
 		setCurrentApiConfigName: (value) => setState((prevState) => ({ ...prevState, currentApiConfigName: value })),
 		setListApiConfigMeta,
 		onUpdateApiConfig,
 		setMode: (value: Mode) => setState((prevState) => ({ ...prevState, mode: value })),
-		setCustomPrompts: (value) => setState((prevState) => ({ ...prevState, customPrompts: value })),
+		setCustomModePrompts: (value) => setState((prevState) => ({ ...prevState, customModePrompts: value })),
+		setCustomSupportPrompts: (value) => setState((prevState) => ({ ...prevState, customSupportPrompts: value })),
 		setEnhancementApiConfigId: (value) =>
 			setState((prevState) => ({ ...prevState, enhancementApiConfigId: value })),
-		setExperimentalDiffStrategy: (value) =>
-			setState((prevState) => ({ ...prevState, experimentalDiffStrategy: value })),
 		setAutoApprovalEnabled: (value) => setState((prevState) => ({ ...prevState, autoApprovalEnabled: value })),
+		handleInputChange,
+		setCustomModes: (value) => setState((prevState) => ({ ...prevState, customModes: value })),
 	}
 
 	return <ExtensionStateContext.Provider value={contextValue}>{children}</ExtensionStateContext.Provider>

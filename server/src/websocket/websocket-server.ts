@@ -4,6 +4,7 @@ import { WebSocketMessage, WebSocketServer, WebSocketConnection, MessageHandler 
 import { ConfigStore } from "../config/ConfigStore"
 import { McpManager } from "../mcp/McpManager"
 import { MessageRouter } from "./message-handler"
+import { RateLimiter } from "../utils/rate-limiter"
 
 export class WebSocketServerImpl implements WebSocketServer {
 	private wss: WSServer
@@ -13,6 +14,7 @@ export class WebSocketServerImpl implements WebSocketServer {
 	private configStore: ConfigStore
 	private mcpManager: McpManager
 	private messageRouter: MessageRouter
+	private rateLimiter: RateLimiter
 
 	constructor(port: number, configStore: ConfigStore, mcpManager: McpManager) {
 		this.wss = new WSServer({ port })
@@ -20,6 +22,7 @@ export class WebSocketServerImpl implements WebSocketServer {
 		this.mcpManager = mcpManager
 		this.messageRouter = new MessageRouter(configStore, mcpManager)
 		this.messageHandler = this.messageRouter.createMessageHandler()
+		this.rateLimiter = new RateLimiter(1000, 10, 60000) // 1秒ごとに最大10リクエスト、1分間のウィンドウ
 		this.setupWSServer()
 	}
 
@@ -39,6 +42,23 @@ export class WebSocketServerImpl implements WebSocketServer {
 
 			ws.on("message", async (data: string) => {
 				try {
+					// レート制限チェック
+					const isAllowed = await this.rateLimiter.checkRateLimit(connectionId)
+					if (!isAllowed) {
+						const delay = this.rateLimiter.getNextRequestDelay(connectionId)
+						ws.send(
+							JSON.stringify({
+								type: "error",
+								payload: {
+									code: "RATE_LIMIT_EXCEEDED",
+									message: `Rate limit exceeded. Please wait ${Math.ceil(delay / 1000)} seconds.`,
+									retryAfter: delay,
+								},
+							}),
+						)
+						return
+					}
+
 					const message: WebSocketMessage = JSON.parse(data)
 					if (this.messageHandler) {
 						await this.messageHandler(message, connection)
@@ -51,11 +71,13 @@ export class WebSocketServerImpl implements WebSocketServer {
 
 			ws.on("close", () => {
 				this.connections.delete(connectionId)
+				this.rateLimiter.reset(connectionId)
 			})
 
 			ws.on("error", (error) => {
 				console.error("WebSocket error:", error)
 				this.connections.delete(connectionId)
+				this.rateLimiter.reset(connectionId)
 			})
 
 			if (this.connectionHandler) {
@@ -94,5 +116,13 @@ export class WebSocketServerImpl implements WebSocketServer {
 
 	close(): void {
 		this.wss.close()
+	}
+
+	// レート制限情報を取得
+	getRateLimitInfo(connectionId: string) {
+		return {
+			remainingRequests: this.rateLimiter.getRemainingRequests(connectionId),
+			nextRequestDelay: this.rateLimiter.getNextRequestDelay(connectionId),
+		}
 	}
 }

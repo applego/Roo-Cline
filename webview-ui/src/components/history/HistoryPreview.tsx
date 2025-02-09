@@ -151,4 +151,6 @@ const HistoryPreview = ({ showHistoryView }: HistoryPreviewProps) => {
 	)
 }
 
+HistoryPreview.displayName = "HistoryPreview"
+
 export default memo(HistoryPreview)

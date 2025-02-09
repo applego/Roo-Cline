@@ -15,6 +15,7 @@ import { vscode } from "../../utils/vscode"
 import CodeAccordian, { removeLeadingNonAlphanumeric } from "../common/CodeAccordian"
 import CodeBlock, { CODE_BLOCK_BG_COLOR } from "../common/CodeBlock"
 import MarkdownBlock from "../common/MarkdownBlock"
+import ReasoningBlock from "./ReasoningBlock"
 import Thumbnails from "../common/Thumbnails"
 import McpResourceRow from "../mcp/McpResourceRow"
 import McpToolRow from "../mcp/McpToolRow"
@@ -68,6 +69,8 @@ const ChatRow = memo(
 	deepEqual,
 )
 
+ChatRow.displayName = "ChatRow"
+
 export default ChatRow
 
 export const ChatRowContent = ({
@@ -78,9 +81,17 @@ export const ChatRowContent = ({
 	isLast,
 	isStreaming,
 }: ChatRowContentProps) => {
-	const { mcpServers } = useExtensionState()
+	const { mcpServers, alwaysAllowMcp } = useExtensionState()
+	const [reasoningCollapsed, setReasoningCollapsed] = useState(false)
+
+	// Auto-collapse reasoning when new messages arrive
+	useEffect(() => {
+		if (!isLast && message.say === "reasoning") {
+			setReasoningCollapsed(true)
+		}
+	}, [isLast, message.say])
 	const [cost, apiReqCancelReason, apiReqStreamingFailedMessage] = useMemo(() => {
-		if (message.text != null && message.say === "api_req_started") {
+		if (message.text && message.say === "api_req_started") {
 			const info: ClineApiReqInfo = JSON.parse(message.text)
 			return [info.cost, info.cancelReason, info.streamingFailedMessage]
 		}
@@ -108,51 +119,62 @@ export const ChatRowContent = ({
 			case "error":
 				return [
 					<span
+						key="icon"
 						className="codicon codicon-error"
 						style={{ color: errorColor, marginBottom: "-1.5px" }}></span>,
-					<span style={{ color: errorColor, fontWeight: "bold" }}>Error</span>,
+					<span key="title" style={{ color: errorColor, fontWeight: "bold" }}>
+						Error
+					</span>,
 				]
 			case "mistake_limit_reached":
 				return [
 					<span
+						key="icon"
 						className="codicon codicon-error"
 						style={{ color: errorColor, marginBottom: "-1.5px" }}></span>,
-					<span style={{ color: errorColor, fontWeight: "bold" }}>Cline is having trouble...</span>,
+					<span key="title" style={{ color: errorColor, fontWeight: "bold" }}>
+						Roo is having trouble...
+					</span>,
 				]
 			case "command":
 				return [
 					isCommandExecuting ? (
-						<ProgressIndicator />
+						<ProgressIndicator key="icon" />
 					) : (
 						<span
+							key="icon"
 							className="codicon codicon-terminal"
 							style={{ color: normalColor, marginBottom: "-1.5px" }}></span>
 					),
-					<span style={{ color: normalColor, fontWeight: "bold" }}>
-						Cline wants to execute this command:
+					<span key="title" style={{ color: normalColor, fontWeight: "bold" }}>
+						Roo wants to execute this command:
 					</span>,
 				]
 			case "use_mcp_server":
 				const mcpServerUse = JSON.parse(message.text || "{}") as ClineAskUseMcpServer
 				return [
 					isMcpServerResponding ? (
-						<ProgressIndicator />
+						<ProgressIndicator key="icon" />
 					) : (
 						<span
+							key="icon"
 							className="codicon codicon-server"
 							style={{ color: normalColor, marginBottom: "-1.5px" }}></span>
 					),
-					<span style={{ color: normalColor, fontWeight: "bold" }}>
-						Cline wants to {mcpServerUse.type === "use_mcp_tool" ? "use a tool" : "access a resource"} on
-						the <code>{mcpServerUse.serverName}</code> MCP server:
+					<span key="title" style={{ color: normalColor, fontWeight: "bold" }}>
+						Roo wants to {mcpServerUse.type === "use_mcp_tool" ? "use a tool" : "access a resource"} on the{" "}
+						<code>{mcpServerUse.serverName}</code> MCP server:
 					</span>,
 				]
 			case "completion_result":
 				return [
 					<span
+						key="icon"
 						className="codicon codicon-check"
 						style={{ color: successColor, marginBottom: "-1.5px" }}></span>,
-					<span style={{ color: successColor, fontWeight: "bold" }}>Task Completed</span>,
+					<span key="title" style={{ color: successColor, fontWeight: "bold" }}>
+						Task Completed
+					</span>,
 				]
 			case "api_req_retry_delayed":
 				return []
@@ -176,26 +198,26 @@ export const ChatRowContent = ({
 					</div>
 				)
 				return [
-					apiReqCancelReason != null ? (
+					apiReqCancelReason !== null ? (
 						apiReqCancelReason === "user_cancelled" ? (
 							getIconSpan("error", cancelledColor)
 						) : (
 							getIconSpan("error", errorColor)
 						)
-					) : cost != null ? (
+					) : cost !== null ? (
 						getIconSpan("check", successColor)
 					) : apiRequestFailedMessage ? (
 						getIconSpan("error", errorColor)
 					) : (
 						<ProgressIndicator />
 					),
-					apiReqCancelReason != null ? (
+					apiReqCancelReason !== null ? (
 						apiReqCancelReason === "user_cancelled" ? (
 							<span style={{ color: normalColor, fontWeight: "bold" }}>API Request Cancelled</span>
 						) : (
 							<span style={{ color: errorColor, fontWeight: "bold" }}>API Streaming Failed</span>
 						)
-					) : cost != null ? (
+					) : cost !== null ? (
 						<span style={{ color: normalColor, fontWeight: "bold" }}>API Request</span>
 					) : apiRequestFailedMessage ? (
 						<span style={{ color: errorColor, fontWeight: "bold" }}>API Request Failed</span>
@@ -206,9 +228,12 @@ export const ChatRowContent = ({
 			case "followup":
 				return [
 					<span
+						key="icon"
 						className="codicon codicon-question"
 						style={{ color: normalColor, marginBottom: "-1.5px" }}></span>,
-					<span style={{ color: normalColor, fontWeight: "bold" }}>Cline has a question:</span>,
+					<span key="title" style={{ color: normalColor, fontWeight: "bold" }}>
+						Roo has a question:
+					</span>,
 				]
 			default:
 				return [null, null]
@@ -250,7 +275,7 @@ export const ChatRowContent = ({
 					<>
 						<div style={headerStyle}>
 							{toolIcon(tool.tool === "appliedDiff" ? "diff" : "edit")}
-							<span style={{ fontWeight: "bold" }}>Cline wants to edit this file:</span>
+							<span style={{ fontWeight: "bold" }}>Roo wants to edit this file:</span>
 						</div>
 						<CodeAccordian
 							isLoading={message.partial}
@@ -266,7 +291,7 @@ export const ChatRowContent = ({
 					<>
 						<div style={headerStyle}>
 							{toolIcon("new-file")}
-							<span style={{ fontWeight: "bold" }}>Cline wants to create a new file:</span>
+							<span style={{ fontWeight: "bold" }}>Roo wants to create a new file:</span>
 						</div>
 						<CodeAccordian
 							isLoading={message.partial}
@@ -283,7 +308,7 @@ export const ChatRowContent = ({
 						<div style={headerStyle}>
 							{toolIcon("file-code")}
 							<span style={{ fontWeight: "bold" }}>
-								{message.type === "ask" ? "Cline wants to read this file:" : "Cline read this file:"}
+								{message.type === "ask" ? "Roo wants to read this file:" : "Roo read this file:"}
 							</span>
 						</div>
 						{/* <CodeAccordian
@@ -341,8 +366,8 @@ export const ChatRowContent = ({
 							{toolIcon("folder-opened")}
 							<span style={{ fontWeight: "bold" }}>
 								{message.type === "ask"
-									? "Cline wants to view the top level files in this directory:"
-									: "Cline viewed the top level files in this directory:"}
+									? "Roo wants to view the top level files in this directory:"
+									: "Roo viewed the top level files in this directory:"}
 							</span>
 						</div>
 						<CodeAccordian
@@ -361,8 +386,8 @@ export const ChatRowContent = ({
 							{toolIcon("folder-opened")}
 							<span style={{ fontWeight: "bold" }}>
 								{message.type === "ask"
-									? "Cline wants to recursively view all files in this directory:"
-									: "Cline recursively viewed all files in this directory:"}
+									? "Roo wants to recursively view all files in this directory:"
+									: "Roo recursively viewed all files in this directory:"}
 							</span>
 						</div>
 						<CodeAccordian
@@ -381,8 +406,8 @@ export const ChatRowContent = ({
 							{toolIcon("file-code")}
 							<span style={{ fontWeight: "bold" }}>
 								{message.type === "ask"
-									? "Cline wants to view source code definition names used in this directory:"
-									: "Cline viewed source code definition names used in this directory:"}
+									? "Roo wants to view source code definition names used in this directory:"
+									: "Roo viewed source code definition names used in this directory:"}
 							</span>
 						</div>
 						<CodeAccordian
@@ -401,11 +426,11 @@ export const ChatRowContent = ({
 							<span style={{ fontWeight: "bold" }}>
 								{message.type === "ask" ? (
 									<>
-										Cline wants to search this directory for <code>{tool.regex}</code>:
+										Roo wants to search this directory for <code>{tool.regex}</code>:
 									</>
 								) : (
 									<>
-										Cline searched this directory for <code>{tool.regex}</code>:
+										Roo searched this directory for <code>{tool.regex}</code>:
 									</>
 								)}
 							</span>
@@ -428,9 +453,9 @@ export const ChatRowContent = ({
 			// 				{isInspecting ? <ProgressIndicator /> : toolIcon("inspect")}
 			// 				<span style={{ fontWeight: "bold" }}>
 			// 					{message.type === "ask" ? (
-			// 						<>Cline wants to inspect this website:</>
+			// 						<>Roo wants to inspect this website:</>
 			// 					) : (
-			// 						<>Cline is inspecting this website:</>
+			// 						<>Roo is inspecting this website:</>
 			// 					)}
 			// 				</span>
 			// 			</div>
@@ -445,6 +470,41 @@ export const ChatRowContent = ({
 			// 			</div>
 			// 		</>
 			// 	)
+			case "switchMode":
+				return (
+					<>
+						<div style={headerStyle}>
+							{toolIcon("symbol-enum")}
+							<span style={{ fontWeight: "bold" }}>
+								{message.type === "ask" ? (
+									<>
+										Roo wants to switch to <code>{tool.mode}</code> mode
+										{tool.reason ? ` because: ${tool.reason}` : ""}
+									</>
+								) : (
+									<>
+										Roo switched to <code>{tool.mode}</code> mode
+										{tool.reason ? ` because: ${tool.reason}` : ""}
+									</>
+								)}
+							</span>
+						</div>
+					</>
+				)
+			case "newTask":
+				return (
+					<>
+						<div style={headerStyle}>
+							{toolIcon("new-file")}
+							<span style={{ fontWeight: "bold" }}>
+								Roo wants to create a new task in <code>{tool.mode}</code> mode:
+							</span>
+						</div>
+						<div style={{ paddingLeft: "26px", marginTop: "4px" }}>
+							<code>{tool.content}</code>
+						</div>
+					</>
+				)
 			default:
 				return null
 		}
@@ -453,6 +513,14 @@ export const ChatRowContent = ({
 	switch (message.type) {
 		case "say":
 			switch (message.say) {
+				case "reasoning":
+					return (
+						<ReasoningBlock
+							content={message.text || ""}
+							isCollapsed={reasoningCollapsed}
+							onToggleCollapse={() => setReasoningCollapsed(!reasoningCollapsed)}
+						/>
+					)
 				case "api_req_started":
 					return (
 						<>
@@ -460,7 +528,7 @@ export const ChatRowContent = ({
 								style={{
 									...headerStyle,
 									marginBottom:
-										(cost == null && apiRequestFailedMessage) || apiReqStreamingFailedMessage
+										(cost === null && apiRequestFailedMessage) || apiReqStreamingFailedMessage
 											? 10
 											: 0,
 									justifyContent: "space-between",
@@ -474,13 +542,13 @@ export const ChatRowContent = ({
 								<div style={{ display: "flex", alignItems: "center", gap: "10px", flexGrow: 1 }}>
 									{icon}
 									{title}
-									<VSCodeBadge style={{ opacity: cost != null && cost > 0 ? 1 : 0 }}>
+									<VSCodeBadge style={{ opacity: cost !== null && cost > 0 ? 1 : 0 }}>
 										${Number(cost || 0)?.toFixed(4)}
 									</VSCodeBadge>
 								</div>
 								<span className={`codicon codicon-chevron-${isExpanded ? "up" : "down"}`}></span>
 							</div>
-							{((cost == null && apiRequestFailedMessage) || apiReqStreamingFailedMessage) && (
+							{((cost === null && apiRequestFailedMessage) || apiReqStreamingFailedMessage) && (
 								<>
 									<p style={{ ...pStyle, color: "var(--vscode-errorForeground)" }}>
 										{apiRequestFailedMessage || apiReqStreamingFailedMessage}
@@ -488,7 +556,8 @@ export const ChatRowContent = ({
 											<>
 												<br />
 												<br />
-												It seems like you're having Windows PowerShell issues, please see this{" "}
+												It seems like you&apos;re having Windows PowerShell issues, please see
+												this{" "}
 												<a
 													href="https://github.com/cline/cline/wiki/TroubleShooting-%E2%80%90-%22PowerShell-is-not-recognized-as-an-internal-or-external-command%22"
 													style={{ color: "inherit", textDecoration: "underline" }}>
@@ -572,14 +641,17 @@ export const ChatRowContent = ({
 									alignItems: "flex-start",
 									gap: "10px",
 								}}>
-								<span style={{ display: "block", flexGrow: 1 }}>{highlightMentions(message.text)}</span>
+								<span style={{ display: "block", flexGrow: 1, padding: "4px" }}>
+									{highlightMentions(message.text)}
+								</span>
 								<VSCodeButton
 									appearance="icon"
 									style={{
 										padding: "3px",
 										flexShrink: 0,
 										height: "24px",
-										marginTop: "-6px",
+										marginTop: "-3px",
+										marginBottom: "-3px",
 										marginRight: "-6px",
 									}}
 									disabled={isStreaming}
@@ -663,10 +735,10 @@ export const ChatRowContent = ({
 									</span>
 								</div>
 								<div>
-									Cline won't be able to view the command's output. Please update VSCode (
-									<code>CMD/CTRL + Shift + P</code> → "Update") and make sure you're using a supported
-									shell: zsh, bash, fish, or PowerShell (<code>CMD/CTRL + Shift + P</code> →
-									"Terminal: Select Default Profile").{" "}
+									Roo won&apos;t be able to view the command&apos;s output. Please update VSCode (
+									<code>CMD/CTRL + Shift + P</code> → &quot;Update&quot;) and make sure you&apos;re
+									using a supported shell: zsh, bash, fish, or PowerShell (
+									<code>CMD/CTRL + Shift + P</code> → &quot;Terminal: Select Default Profile&quot;).{" "}
 									<a
 										href="https://github.com/cline/cline/wiki/Troubleshooting-%E2%80%90-Shell-Integration-Unavailable"
 										style={{ color: "inherit", textDecoration: "underline" }}>
@@ -849,6 +921,7 @@ export const ChatRowContent = ({
 														)?.alwaysAllow || false,
 												}}
 												serverName={useMcpServer.serverName}
+												alwaysAllowMcp={alwaysAllowMcp}
 											/>
 										</div>
 										{useMcpServer.arguments && useMcpServer.arguments !== "{}" && (
@@ -911,6 +984,8 @@ export const ChatRowContent = ({
 	}
 }
 
+ChatRowContent.displayName = "ChatRowContent"
+
 export const ProgressIndicator = () => (
 	<div
 		style={{
@@ -925,6 +1000,8 @@ export const ProgressIndicator = () => (
 		</div>
 	</div>
 )
+
+ProgressIndicator.displayName = "ProgressIndicator"
 
 const Markdown = memo(({ markdown, partial }: { markdown?: string; partial?: boolean }) => {
 	const [isHovering, setIsHovering] = useState(false)
@@ -983,3 +1060,5 @@ const Markdown = memo(({ markdown, partial }: { markdown?: string; partial?: boo
 		</div>
 	)
 })
+
+Markdown.displayName = "Markdown"

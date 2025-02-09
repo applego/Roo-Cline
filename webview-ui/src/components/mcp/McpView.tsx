@@ -1,5 +1,6 @@
 import {
 	VSCodeButton,
+	VSCodeCheckbox,
 	VSCodeLink,
 	VSCodePanels,
 	VSCodePanelTab,
@@ -18,91 +19,26 @@ type McpViewProps = {
 }
 
 const McpView = ({ onDone }: McpViewProps) => {
-	const { mcpServers: servers, alwaysAllowMcp, mcpEnabled } = useExtensionState()
-	// const [servers, setServers] = useState<McpServer[]>([
-	// 	// Add some mock servers for testing
-	// 	{
-	// 		name: "local-tools",
-	// 		config: JSON.stringify({
-	// 			mcpServers: {
-	// 				"local-tools": {
-	// 					command: "npx",
-	// 					args: ["-y", "@modelcontextprotocol/server-tools"],
-	// 				},
-	// 			},
-	// 		}),
-	// 		status: "connected",
-	// 		tools: [
-	// 			{
-	// 				name: "execute_command",
-	// 				description: "Run a shell command on the local system",
-	// 			},
-	// 			{
-	// 				name: "read_file",
-	// 				description: "Read contents of a file from the filesystem",
-	// 			},
-	// 		],
-	// 	},
-	// 	{
-	// 		name: "postgres-db",
-	// 		config: JSON.stringify({
-	// 			mcpServers: {
-	// 				"postgres-db": {
-	// 					command: "npx",
-	// 					args: ["-y", "@modelcontextprotocol/server-postgres", "postgresql://localhost/mydb"],
-	// 				},
-	// 			},
-	// 		}),
-	// 		status: "disconnected",
-	// 		error: "Failed to connect to database: Connection refused",
-	// 	},
-	// 	{
-	// 		name: "github-tools",
-	// 		config: JSON.stringify({
-	// 			mcpServers: {
-	// 				"github-tools": {
-	// 					command: "npx",
-	// 					args: ["-y", "@modelcontextprotocol/server-github"],
-	// 				},
-	// 			},
-	// 		}),
-	// 		status: "connecting",
-	// 		resources: [
-	// 			{
-	// 				uri: "github://repo/issues",
-	// 				name: "Repository Issues",
-	// 			},
-	// 			{
-	// 				uri: "github://repo/pulls",
-	// 				name: "Pull Requests",
-	// 			},
-	// 		],
-	// 	},
-	// ])
+	const {
+		mcpServers: servers,
+		alwaysAllowMcp,
+		mcpEnabled,
+		enableMcpServerCreation,
+		setEnableMcpServerCreation,
+	} = useExtensionState()
 
 	return (
-		<div
-			style={{
-				position: "fixed",
-				top: 0,
-				left: 0,
-				right: 0,
-				bottom: 0,
-				display: "flex",
-				flexDirection: "column",
-			}}>
-			<div
-				style={{
-					display: "flex",
-					justifyContent: "space-between",
-					alignItems: "center",
-					padding: "10px 17px 10px 20px",
-				}}>
-				<h3 style={{ color: "var(--vscode-foreground)", margin: 0 }}>MCP Servers</h3>
-				<VSCodeButton onClick={onDone}>Done</VSCodeButton>
+		<div style={{ height: "100%", display: "flex", flexDirection: "column" }}>
+			<div style={{ padding: "20px 20px 0 20px" }}>
+				<div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "20px" }}>
+					<VSCodeButton appearance="icon" onClick={onDone}>
+						<span className="codicon codicon-chevron-left"></span>
+					</VSCodeButton>
+					<h2 style={{ margin: 0 }}>MCP</h2>
+				</div>
 			</div>
 
-			<div style={{ flex: 1, overflow: "auto", padding: "0 20px" }}>
+			<div style={{ flex: 1, overflowY: "auto", padding: "0 20px" }}>
 				<div
 					style={{
 						color: "var(--vscode-foreground)",
@@ -115,18 +51,39 @@ const McpView = ({ onDone }: McpViewProps) => {
 						Model Context Protocol
 					</VSCodeLink>{" "}
 					enables communication with locally running MCP servers that provide additional tools and resources
-					to extend Cline's capabilities. You can use{" "}
+					to extend Roo&apos;s capabilities. You can use{" "}
 					<VSCodeLink href="https://github.com/modelcontextprotocol/servers" style={{ display: "inline" }}>
 						community-made servers
 					</VSCodeLink>{" "}
-					or ask Cline to create new tools specific to your workflow (e.g., "add a tool that gets the latest
-					npm docs").
+					or ask Roo to create new tools specific to your workflow (e.g., &quot;add a tool that gets the
+					latest npm docs&quot;).
 				</div>
 
 				<McpEnabledToggle />
 
 				{mcpEnabled && (
 					<>
+						<div style={{ marginBottom: 15 }}>
+							<VSCodeCheckbox
+								checked={enableMcpServerCreation}
+								onChange={(e: any) => {
+									setEnableMcpServerCreation(e.target.checked)
+									vscode.postMessage({ type: "enableMcpServerCreation", bool: e.target.checked })
+								}}>
+								<span style={{ fontWeight: "500" }}>Enable MCP Server Creation</span>
+							</VSCodeCheckbox>
+							<p
+								style={{
+									fontSize: "12px",
+									marginTop: "5px",
+									color: "var(--vscode-descriptionForeground)",
+								}}>
+								When enabled, Roo can help you create new MCP servers via commands like &quot;add a new
+								tool to...&quot;. If you don&apos;t need to create MCP servers you can disable this to
+								reduce Roo&apos;s token usage.
+							</p>
+						</div>
+
 						{/* Server List */}
 						{servers.length > 0 && (
 							<div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
@@ -158,9 +115,26 @@ const McpView = ({ onDone }: McpViewProps) => {
 	)
 }
 
+McpView.displayName = "McpView"
+
 // Server Row Component
 const ServerRow = ({ server, alwaysAllowMcp }: { server: McpServer; alwaysAllowMcp?: boolean }) => {
 	const [isExpanded, setIsExpanded] = useState(false)
+	const [timeoutValue, setTimeoutValue] = useState(() => {
+		const configTimeout = JSON.parse(server.config)?.timeout
+		return configTimeout ?? 60 // Default 1 minute (60 seconds)
+	})
+
+	const timeoutOptions = [
+		{ value: 15, label: "15 seconds" },
+		{ value: 30, label: "30 seconds" },
+		{ value: 60, label: "1 minute" },
+		{ value: 300, label: "5 minutes" },
+		{ value: 600, label: "10 minutes" },
+		{ value: 900, label: "15 minutes" },
+		{ value: 1800, label: "30 minutes" },
+		{ value: 3600, label: "60 minutes" },
+	]
 
 	const getStatusColor = () => {
 		switch (server.status) {
@@ -183,6 +157,16 @@ const ServerRow = ({ server, alwaysAllowMcp }: { server: McpServer; alwaysAllowM
 		vscode.postMessage({
 			type: "restartMcpServer",
 			text: server.name,
+		})
+	}
+
+	const handleTimeoutChange = (event: React.ChangeEvent<HTMLSelectElement>) => {
+		const seconds = parseInt(event.target.value)
+		setTimeoutValue(seconds)
+		vscode.postMessage({
+			type: "updateMcpTimeout",
+			serverName: server.name,
+			timeout: seconds,
 		})
 	}
 
@@ -302,7 +286,7 @@ const ServerRow = ({ server, alwaysAllowMcp }: { server: McpServer; alwaysAllowM
 							fontSize: "13px",
 							borderRadius: "0 0 4px 4px",
 						}}>
-						<VSCodePanels>
+						<VSCodePanels style={{ marginBottom: "10px" }}>
 							<VSCodePanelTab id="tools">Tools ({server.tools?.length || 0})</VSCodePanelTab>
 							<VSCodePanelTab id="resources">
 								Resources (
@@ -350,6 +334,46 @@ const ServerRow = ({ server, alwaysAllowMcp }: { server: McpServer; alwaysAllowM
 								)}
 							</VSCodePanelView>
 						</VSCodePanels>
+
+						{/* Network Timeout */}
+						<div style={{ padding: "10px 7px" }}>
+							<div
+								style={{
+									display: "flex",
+									alignItems: "center",
+									gap: "10px",
+									marginBottom: "8px",
+								}}>
+								<span>Network Timeout</span>
+								<select
+									value={timeoutValue}
+									onChange={handleTimeoutChange}
+									style={{
+										flex: 1,
+										padding: "4px",
+										background: "var(--vscode-dropdown-background)",
+										color: "var(--vscode-dropdown-foreground)",
+										border: "1px solid var(--vscode-dropdown-border)",
+										borderRadius: "2px",
+										outline: "none",
+										cursor: "pointer",
+									}}>
+									{timeoutOptions.map((option) => (
+										<option key={option.value} value={option.value}>
+											{option.label}
+										</option>
+									))}
+								</select>
+							</div>
+							<span
+								style={{
+									fontSize: "12px",
+									color: "var(--vscode-descriptionForeground)",
+									display: "block",
+								}}>
+								Maximum time to wait for server responses
+							</span>
+						</div>
 
 						<VSCodeButton
 							appearance="secondary"

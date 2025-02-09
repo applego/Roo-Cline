@@ -13,10 +13,9 @@ export class GlamaHandler implements ApiHandler, SingleCompletionHandler {
 
 	constructor(options: ApiHandlerOptions) {
 		this.options = options
-		this.client = new OpenAI({
-			baseURL: "https://glama.ai/api/gateway/openai/v1",
-			apiKey: this.options.glamaApiKey,
-		})
+		const baseURL = "https://glama.ai/api/gateway/openai/v1"
+		const apiKey = this.options.glamaApiKey ?? "not-provided"
+		this.client = new OpenAI({ baseURL, apiKey })
 	}
 
 	async *createMessage(systemPrompt: string, messages: Anthropic.Messages.MessageParam[]): ApiStream {
@@ -72,13 +71,29 @@ export class GlamaHandler implements ApiHandler, SingleCompletionHandler {
 			maxTokens = 8_192
 		}
 
+		const requestOptions: OpenAI.Chat.ChatCompletionCreateParams = {
+			model: this.getModel().id,
+			max_tokens: maxTokens,
+			messages: openAiMessages,
+			stream: true,
+		}
+
+		if (this.supportsTemperature()) {
+			requestOptions.temperature = 0
+		}
+
 		const { data: completion, response } = await this.client.chat.completions
-			.create({
-				model: this.getModel().id,
-				max_tokens: maxTokens,
-				temperature: 0,
-				messages: openAiMessages,
-				stream: true,
+			.create(requestOptions, {
+				headers: {
+					"X-Glama-Metadata": JSON.stringify({
+						labels: [
+							{
+								key: "app",
+								value: "vscode.rooveterinaryinc.roo-cline",
+							},
+						],
+					}),
+				},
 			})
 			.withResponse()
 
@@ -96,38 +111,46 @@ export class GlamaHandler implements ApiHandler, SingleCompletionHandler {
 		}
 
 		try {
-			const response = await axios.get(
-				`https://glama.ai/api/gateway/v1/completion-requests/${completionRequestId}`,
-				{
-					headers: {
-						Authorization: `Bearer ${this.options.glamaApiKey}`,
-						"X-Glama-Metadata": JSON.stringify({
-							labels: [
-								{
-									key: "app",
-									value: "vscode.rooveterinaryinc.roo-cline",
-								},
-							],
-						}),
+			let attempt = 0
+
+			const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+			while (attempt++ < 10) {
+				// In case of an interrupted request, we need to wait for the upstream API to finish processing the request
+				// before we can fetch information about the token usage and cost.
+				const response = await axios.get(
+					`https://glama.ai/api/gateway/v1/completion-requests/${completionRequestId}`,
+					{
+						headers: {
+							Authorization: `Bearer ${this.options.glamaApiKey}`,
+						},
 					},
-				},
-			)
+				)
 
-			const completionRequest = response.data
+				const completionRequest = response.data
 
-			if (completionRequest.tokenUsage) {
-				yield {
-					type: "usage",
-					cacheWriteTokens: completionRequest.tokenUsage.cacheCreationInputTokens,
-					cacheReadTokens: completionRequest.tokenUsage.cacheReadInputTokens,
-					inputTokens: completionRequest.tokenUsage.promptTokens,
-					outputTokens: completionRequest.tokenUsage.completionTokens,
-					totalCost: parseFloat(completionRequest.totalCostUsd),
+				if (completionRequest.tokenUsage && completionRequest.totalCostUsd) {
+					yield {
+						type: "usage",
+						cacheWriteTokens: completionRequest.tokenUsage.cacheCreationInputTokens,
+						cacheReadTokens: completionRequest.tokenUsage.cacheReadInputTokens,
+						inputTokens: completionRequest.tokenUsage.promptTokens,
+						outputTokens: completionRequest.tokenUsage.completionTokens,
+						totalCost: parseFloat(completionRequest.totalCostUsd),
+					}
+
+					break
 				}
+
+				await delay(200)
 			}
 		} catch (error) {
 			console.error("Error fetching Glama completion details", error)
 		}
+	}
+
+	private supportsTemperature(): boolean {
+		return !this.getModel().id.startsWith("openai/o3-mini")
 	}
 
 	getModel(): { id: string; info: ModelInfo } {
@@ -146,7 +169,10 @@ export class GlamaHandler implements ApiHandler, SingleCompletionHandler {
 			const requestOptions: OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming = {
 				model: this.getModel().id,
 				messages: [{ role: "user", content: prompt }],
-				temperature: 0,
+			}
+
+			if (this.supportsTemperature()) {
+				requestOptions.temperature = 0
 			}
 
 			if (this.getModel().id.startsWith("anthropic/")) {

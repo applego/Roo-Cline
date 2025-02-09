@@ -1,5 +1,5 @@
 import { ApiConfiguration, ApiProvider } from "./api"
-import { Mode, PromptComponent } from "./modes"
+import { Mode, PromptComponent, ModeConfig } from "./modes"
 
 export type PromptMode = Mode | "enhance"
 
@@ -41,6 +41,7 @@ export interface WebviewMessage {
 		| "refreshOpenAiModels"
 		| "alwaysAllowBrowser"
 		| "alwaysAllowMcp"
+		| "alwaysAllowModeSwitch"
 		| "playSound"
 		| "soundEnabled"
 		| "soundVolume"
@@ -51,6 +52,7 @@ export interface WebviewMessage {
 		| "restartMcpServer"
 		| "toggleToolAlwaysAllow"
 		| "toggleMcpServer"
+		| "updateMcpTimeout"
 		| "fuzzyMatchThreshold"
 		| "preferredLanguage"
 		| "writeDelayMs"
@@ -60,20 +62,27 @@ export interface WebviewMessage {
 		| "deleteMessage"
 		| "terminalOutputLineLimit"
 		| "mcpEnabled"
+		| "enableMcpServerCreation"
 		| "searchCommits"
 		| "refreshGlamaModels"
 		| "alwaysApproveResubmit"
 		| "requestDelaySeconds"
+		| "rateLimitSeconds"
 		| "setApiConfigPassword"
 		| "requestVsCodeLmModels"
 		| "mode"
 		| "updatePrompt"
-		| "updateEnhancedPrompt"
+		| "updateSupportPrompt"
+		| "resetSupportPrompt"
 		| "getSystemPrompt"
 		| "systemPrompt"
 		| "enhancementApiConfigId"
-		| "experimentalDiffStrategy"
+		| "updateExperimental"
 		| "autoApprovalEnabled"
+		| "updateCustomMode"
+		| "deleteCustomMode"
+		| "setopenAiCustomModelInfo"
+		| "openCustomModesSettings"
 	text?: string
 	disabled?: boolean
 	askResponse?: ClineAskResponse
@@ -92,6 +101,9 @@ export interface WebviewMessage {
 	dataUrls?: string[]
 	values?: Record<string, any>
 	query?: string
+	slug?: string
+	modeConfig?: ModeConfig
+	timeout?: number
 }
 
 export type ClineAskResponse = "yesButtonClicked" | "noButtonClicked" | "messageResponse"

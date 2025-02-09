@@ -1,7 +1,11 @@
 import { Client, StdioClientTransport } from "@modelcontextprotocol/sdk"
+import { McpServerConfig, McpToolResult } from "../types/mcp"
+import { ConfigStore } from "../config/ConfigStore"
 
 export class McpManager {
 	private connections: Map<string, Client> = new Map()
+
+	constructor(private configStore: ConfigStore) {}
 
 	async connectToServer(serverName: string, config: McpServerConfig): Promise<void> {
 		try {
@@ -20,7 +24,7 @@ export class McpManager {
 		}
 	}
 
-	async callTool(serverName: string, toolName: string, args: any): Promise<any> {
+	async callTool(serverName: string, toolName: string, args: any): Promise<McpToolResult> {
 		const client = this.connections.get(serverName)
 		if (!client) {
 			throw new Error(`No connection to MCP server ${serverName}`)
@@ -30,5 +34,15 @@ export class McpManager {
 			name: toolName,
 			arguments: args,
 		})
+	}
+
+	async initialize(): Promise<void> {
+		// 設定から登録済みのMCPサーバーを取得して接続
+		const config = await this.configStore.load()
+		const mcpServers = config.apiConfig?.mcpServers || {}
+
+		for (const [serverName, serverConfig] of Object.entries(mcpServers)) {
+			await this.connectToServer(serverName, serverConfig as McpServerConfig)
+		}
 	}
 }

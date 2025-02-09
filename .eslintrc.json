@@ -10,15 +10,14 @@
 		"@typescript-eslint/naming-convention": [
 			"warn",
 			{
-				"selector": "import",
-				"format": ["camelCase", "PascalCase"]
+				"selector": "variable",
+				"format": ["camelCase", "PascalCase", "UPPER_CASE"]
 			}
 		],
 		"@typescript-eslint/semi": "off",
 		"eqeqeq": "warn",
 		"no-throw-literal": "warn",
-		"semi": "off",
-		"react-hooks/exhaustive-deps": "off"
+		"semi": "off"
 	},
 	"ignorePatterns": ["out", "dist", "**/*.d.ts"]
 }

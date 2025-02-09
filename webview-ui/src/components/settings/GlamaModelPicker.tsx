@@ -5,14 +5,20 @@ import React, { KeyboardEvent, memo, useEffect, useMemo, useRef, useState } from
 import { useRemark } from "react-remark"
 import { useMount } from "react-use"
 import styled from "styled-components"
+import { ApiConfiguration } from "../../../../src/shared/api"
 import { glamaDefaultModelId } from "../../../../src/shared/api"
 import { useExtensionState } from "../../context/ExtensionStateContext"
 import { vscode } from "../../utils/vscode"
 import { highlightFzfMatch } from "../../utils/highlight"
 import { ModelInfoView, normalizeApiConfiguration } from "./ApiOptions"
 
-const GlamaModelPicker: React.FC = () => {
-	const { apiConfiguration, setApiConfiguration, glamaModels, onUpdateApiConfig } = useExtensionState()
+interface GlamaModelPickerProps {
+	apiConfiguration: ApiConfiguration
+	onUpdateApiConfiguration: (config: ApiConfiguration) => void
+}
+
+const GlamaModelPicker = memo(({ apiConfiguration, onUpdateApiConfiguration }: GlamaModelPickerProps) => {
+	const { glamaModels } = useExtensionState()
 	const [searchTerm, setSearchTerm] = useState(apiConfiguration?.glamaModelId || glamaDefaultModelId)
 	const [isDropdownVisible, setIsDropdownVisible] = useState(false)
 	const [selectedIndex, setSelectedIndex] = useState(-1)
@@ -28,8 +34,7 @@ const GlamaModelPicker: React.FC = () => {
 			glamaModelId: newModelId,
 			glamaModelInfo: glamaModels[newModelId],
 		}
-		setApiConfiguration(apiConfig)
-		onUpdateApiConfig(apiConfig)
+		onUpdateApiConfiguration(apiConfig)
 
 		setSearchTerm(newModelId)
 	}
@@ -231,18 +236,20 @@ const GlamaModelPicker: React.FC = () => {
 					<VSCodeLink style={{ display: "inline", fontSize: "inherit" }} href="https://glama.ai/models">
 						Glama.
 					</VSCodeLink>
-					If you're unsure which model to choose, Cline works best with{" "}
+					If you&apos;re unsure which model to choose, Roo Code works best with{" "}
 					<VSCodeLink
 						style={{ display: "inline", fontSize: "inherit" }}
 						onClick={() => handleModelChange("anthropic/claude-3.5-sonnet")}>
 						anthropic/claude-3.5-sonnet.
 					</VSCodeLink>
-					You can also try searching "free" for no-cost options currently available.
+					You can also try searching &quot;free&quot; for no-cost options currently available.
 				</p>
 			)}
 		</>
 	)
-}
+})
+
+GlamaModelPicker.displayName = "GlamaModelPicker"
 
 export default GlamaModelPicker
 
@@ -413,3 +420,5 @@ export const ModelDescriptionMarkdown = memo(
 		)
 	},
 )
+
+ModelDescriptionMarkdown.displayName = "ModelDescriptionMarkdown"

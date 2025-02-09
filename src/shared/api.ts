@@ -14,6 +14,7 @@ export type ApiProvider =
 	| "deepseek"
 	| "vscode-lm"
 	| "mistral"
+	| "unbound"
 
 export interface ApiHandlerOptions {
 	apiModelId?: string
@@ -26,6 +27,7 @@ export interface ApiHandlerOptions {
 	openRouterApiKey?: string
 	openRouterModelId?: string
 	openRouterModelInfo?: ModelInfo
+	openRouterBaseUrl?: string
 	awsAccessKey?: string
 	awsSecretKey?: string
 	awsSessionToken?: string
@@ -33,11 +35,15 @@ export interface ApiHandlerOptions {
 	awsUseCrossRegionInference?: boolean
 	awsUsePromptCache?: boolean
 	awspromptCacheId?: string
+	awsProfile?: string
+	awsUseProfile?: boolean
 	vertexProjectId?: string
 	vertexRegion?: string
 	openAiBaseUrl?: string
 	openAiApiKey?: string
 	openAiModelId?: string
+	openAiCustomModelInfo?: ModelInfo
+	openAiUseAzure?: boolean
 	ollamaModelId?: string
 	ollamaBaseUrl?: string
 	lmStudioModelId?: string
@@ -51,8 +57,9 @@ export interface ApiHandlerOptions {
 	setAzureApiVersion?: boolean
 	deepSeekBaseUrl?: string
 	deepSeekApiKey?: string
-	deepSeekModelId?: string
 	includeMaxTokens?: boolean
+	unboundApiKey?: string
+	unboundModelId?: string
 }
 
 export type ApiConfiguration = ApiHandlerOptions & {
@@ -73,6 +80,7 @@ export interface ModelInfo {
 	cacheWritesPrice?: number
 	cacheReadsPrice?: number
 	description?: string
+	reasoningEffort?: "low" | "medium" | "high"
 }
 
 // Anthropic
@@ -234,6 +242,15 @@ export const bedrockModels = {
 		supportsPromptCache: false,
 		inputPrice: 0.25,
 		outputPrice: 1.25,
+	},
+	"meta.llama3-3-70b-instruct-v1:0": {
+		maxTokens: 8192,
+		contextWindow: 128_000,
+		supportsImages: false,
+		supportsComputerUse: false,
+		supportsPromptCache: false,
+		inputPrice: 0.72,
+		outputPrice: 0.72,
 	},
 	"meta.llama3-2-90b-instruct-v1:0": {
 		maxTokens: 8192,
@@ -412,8 +429,40 @@ export const openAiModelInfoSaneDefaults: ModelInfo = {
 // Gemini
 // https://ai.google.dev/gemini-api/docs/models/gemini
 export type GeminiModelId = keyof typeof geminiModels
-export const geminiDefaultModelId: GeminiModelId = "gemini-2.0-flash-thinking-exp-1219"
+export const geminiDefaultModelId: GeminiModelId = "gemini-2.0-flash-001"
 export const geminiModels = {
+	"gemini-2.0-flash-001": {
+		maxTokens: 8192,
+		contextWindow: 1_048_576,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+	},
+	"gemini-2.0-flash-lite-preview-02-05": {
+		maxTokens: 8192,
+		contextWindow: 1_048_576,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+	},
+	"gemini-2.0-pro-exp-02-05": {
+		maxTokens: 8192,
+		contextWindow: 2_097_152,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+	},
+	"gemini-2.0-flash-thinking-exp-01-21": {
+		maxTokens: 65_536,
+		contextWindow: 1_048_576,
+		supportsImages: true,
+		supportsPromptCache: false,
+		inputPrice: 0,
+		outputPrice: 0,
+	},
 	"gemini-2.0-flash-thinking-exp-1219": {
 		maxTokens: 8192,
 		contextWindow: 32_767,
@@ -486,6 +535,33 @@ export type OpenAiNativeModelId = keyof typeof openAiNativeModels
 export const openAiNativeDefaultModelId: OpenAiNativeModelId = "gpt-4o"
 export const openAiNativeModels = {
 	// don't support tool use yet
+	"o3-mini": {
+		maxTokens: 100_000,
+		contextWindow: 200_000,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 1.1,
+		outputPrice: 4.4,
+		reasoningEffort: "medium",
+	},
+	"o3-mini-high": {
+		maxTokens: 100_000,
+		contextWindow: 200_000,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 1.1,
+		outputPrice: 4.4,
+		reasoningEffort: "high",
+	},
+	"o3-mini-low": {
+		maxTokens: 100_000,
+		contextWindow: 200_000,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 1.1,
+		outputPrice: 4.4,
+		reasoningEffort: "low",
+	},
 	o1: {
 		maxTokens: 100_000,
 		contextWindow: 200_000,
@@ -507,8 +583,8 @@ export const openAiNativeModels = {
 		contextWindow: 128_000,
 		supportsImages: true,
 		supportsPromptCache: false,
-		inputPrice: 3,
-		outputPrice: 12,
+		inputPrice: 1.1,
+		outputPrice: 4.4,
 	},
 	"gpt-4o": {
 		maxTokens: 4_096,
@@ -542,6 +618,15 @@ export const deepSeekModels = {
 		outputPrice: 0.28, // $0.28 per million tokens
 		description: `DeepSeek-V3 achieves a significant breakthrough in inference speed over previous models. It tops the leaderboard among open-source models and rivals the most advanced closed-source models globally.`,
 	},
+	"deepseek-reasoner": {
+		maxTokens: 8192,
+		contextWindow: 64_000,
+		supportsImages: false,
+		supportsPromptCache: false,
+		inputPrice: 0.55, // $0.55 per million tokens
+		outputPrice: 2.19, // $2.19 per million tokens
+		description: `DeepSeek-R1 achieves performance comparable to OpenAI-o1 across math, code, and reasoning tasks.`,
+	},
 } as const satisfies Record<string, ModelInfo>
 
 // Azure OpenAI
@@ -562,4 +647,15 @@ export const mistralModels = {
 		inputPrice: 0.3,
 		outputPrice: 0.9,
 	},
+} as const satisfies Record<string, ModelInfo>
+
+// Unbound Security
+export type UnboundModelId = keyof typeof unboundModels
+export const unboundDefaultModelId = "openai/gpt-4o"
+export const unboundModels = {
+	"anthropic/claude-3-5-sonnet-20241022": anthropicModels["claude-3-5-sonnet-20241022"],
+	"openai/gpt-4o": openAiNativeModels["gpt-4o"],
+	"deepseek/deepseek-chat": deepSeekModels["deepseek-chat"],
+	"deepseek/deepseek-reasoner": deepSeekModels["deepseek-reasoner"],
+	"mistral/codestral-latest": mistralModels["codestral-latest"],
 } as const satisfies Record<string, ModelInfo>

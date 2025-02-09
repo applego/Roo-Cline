@@ -4,7 +4,16 @@ import { ApiConfiguration, ApiProvider, ModelInfo } from "./api"
 import { HistoryItem } from "./HistoryItem"
 import { McpServer } from "./mcp"
 import { GitCommit } from "../utils/git"
-import { Mode, CustomPrompts } from "./modes"
+import { Mode, CustomModePrompts, ModeConfig } from "./modes"
+import { CustomSupportPrompts } from "./support-prompt"
+import { ExperimentId } from "./experiments"
+
+export interface LanguageModelChatSelector {
+	vendor?: string
+	family?: string
+	version?: string
+	id?: string
+}
 
 // webview will hold state
 export interface ExtensionMessage {
@@ -31,6 +40,8 @@ export interface ExtensionMessage {
 		| "updatePrompt"
 		| "systemPrompt"
 		| "autoApprovalEnabled"
+		| "updateCustomMode"
+		| "deleteCustomMode"
 	text?: string
 	action?:
 		| "chatButtonClicked"
@@ -39,13 +50,18 @@ export interface ExtensionMessage {
 		| "historyButtonClicked"
 		| "promptsButtonClicked"
 		| "didBecomeVisible"
-	invoke?: "sendMessage" | "primaryButtonClick" | "secondaryButtonClick"
+	invoke?: "sendMessage" | "primaryButtonClick" | "secondaryButtonClick" | "setChatBoxMessage"
 	state?: ExtensionState
 	images?: string[]
 	ollamaModels?: string[]
 	lmStudioModels?: string[]
 	vsCodeLmModels?: { vendor?: string; family?: string; version?: string; id?: string }[]
 	filePaths?: string[]
+	openedTabs?: Array<{
+		label: string
+		isActive: boolean
+		path?: string
+	}>
 	partialMessage?: ClineMessage
 	glamaModels?: Record<string, ModelInfo>
 	openRouterModels?: Record<string, ModelInfo>
@@ -54,6 +70,8 @@ export interface ExtensionMessage {
 	commits?: GitCommit[]
 	listApiConfig?: ApiConfigMeta[]
 	mode?: Mode
+	customMode?: ModeConfig
+	slug?: string
 }
 
 export interface ApiConfigMeta {
@@ -71,14 +89,17 @@ export interface ExtensionState {
 	currentApiConfigName?: string
 	listApiConfigMeta?: ApiConfigMeta[]
 	customInstructions?: string
-	customPrompts?: CustomPrompts
+	customModePrompts?: CustomModePrompts
+	customSupportPrompts?: CustomSupportPrompts
 	alwaysAllowReadOnly?: boolean
 	alwaysAllowWrite?: boolean
 	alwaysAllowExecute?: boolean
 	alwaysAllowBrowser?: boolean
 	alwaysAllowMcp?: boolean
 	alwaysApproveResubmit?: boolean
+	alwaysAllowModeSwitch?: boolean
 	requestDelaySeconds: number
+	rateLimitSeconds: number // Minimum time between successive requests (0 = disabled)
 	uriScheme?: string
 	allowedCommands?: string[]
 	soundEnabled?: boolean
@@ -91,11 +112,14 @@ export interface ExtensionState {
 	writeDelayMs: number
 	terminalOutputLineLimit?: number
 	mcpEnabled: boolean
+	enableMcpServerCreation: boolean
 	mode: Mode
 	modeApiConfigs?: Record<Mode, string>
 	enhancementApiConfigId?: string
-	experimentalDiffStrategy?: boolean
+	experiments: Record<ExperimentId, boolean> // Map of experiment IDs to their enabled state
 	autoApprovalEnabled?: boolean
+	customModes: ModeConfig[]
+	toolRequirements?: Record<string, boolean> // Map of tool names to their requirements (e.g. {"apply_diff": true} if diffEnabled)
 }
 
 export interface ClineMessage {
@@ -106,6 +130,7 @@ export interface ClineMessage {
 	text?: string
 	images?: string[]
 	partial?: boolean
+	reasoning?: string
 }
 
 export type ClineAsk =
@@ -127,6 +152,7 @@ export type ClineSay =
 	| "api_req_started"
 	| "api_req_finished"
 	| "text"
+	| "reasoning"
 	| "completion_result"
 	| "user_feedback"
 	| "user_feedback_diff"
@@ -140,6 +166,8 @@ export type ClineSay =
 	| "command"
 	| "mcp_server_request_started"
 	| "mcp_server_response"
+	| "new_task_started"
+	| "new_task"
 
 export interface ClineSayTool {
 	tool:
@@ -151,11 +179,15 @@ export interface ClineSayTool {
 		| "listFilesRecursive"
 		| "listCodeDefinitionNames"
 		| "searchFiles"
+		| "switchMode"
+		| "newTask"
 	path?: string
 	diff?: string
 	content?: string
 	regex?: string
 	filePattern?: string
+	mode?: string
+	reason?: string
 }
 
 // must keep in sync with system prompt

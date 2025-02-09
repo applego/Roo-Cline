@@ -1,36 +1,8 @@
 import { DiffStrategy, DiffResult } from "../types"
 import { addLineNumbers, everyLineHasLineNumbers, stripLineNumbers } from "../../../integrations/misc/extract-text"
+import { distance } from "fastest-levenshtein"
 
 const BUFFER_LINES = 20 // Number of extra context lines to show before and after matches
-
-function levenshteinDistance(a: string, b: string): number {
-	const matrix: number[][] = []
-
-	// Initialize matrix
-	for (let i = 0; i <= a.length; i++) {
-		matrix[i] = [i]
-	}
-	for (let j = 0; j <= b.length; j++) {
-		matrix[0][j] = j
-	}
-
-	// Fill matrix
-	for (let i = 1; i <= a.length; i++) {
-		for (let j = 1; j <= b.length; j++) {
-			if (a[i - 1] === b[j - 1]) {
-				matrix[i][j] = matrix[i - 1][j - 1]
-			} else {
-				matrix[i][j] = Math.min(
-					matrix[i - 1][j - 1] + 1, // substitution
-					matrix[i][j - 1] + 1, // insertion
-					matrix[i - 1][j] + 1, // deletion
-				)
-			}
-		}
-	}
-
-	return matrix[a.length][b.length]
-}
 
 function getSimilarity(original: string, search: string): number {
 	if (search === "") {
@@ -47,12 +19,12 @@ function getSimilarity(original: string, search: string): number {
 		return 1
 	}
 
-	// Calculate Levenshtein distance
-	const distance = levenshteinDistance(normalizedOriginal, normalizedSearch)
+	// Calculate Levenshtein distance using fastest-levenshtein's distance function
+	const dist = distance(normalizedOriginal, normalizedSearch)
 
-	// Calculate similarity ratio (0 to 1, where 1 is exact match)
+	// Calculate similarity ratio (0 to 1, where 1 is an exact match)
 	const maxLength = Math.max(normalizedOriginal.length, normalizedSearch.length)
-	return 1 - distance / maxLength
+	return 1 - dist / maxLength
 }
 
 export class SearchReplaceDiffStrategy implements DiffStrategy {
@@ -273,7 +245,7 @@ Your search/replace content here
 					: ""
 			return {
 				success: false,
-				error: `No sufficiently similar match found${lineRange} (${Math.floor(bestMatchScore * 100)}% similar, needs ${Math.floor(this.fuzzyThreshold * 100)}%)\n\nDebug Info:\n- Similarity Score: ${Math.floor(bestMatchScore * 100)}%\n- Required Threshold: ${Math.floor(this.fuzzyThreshold * 100)}%\n- Search Range: ${startLine && endLine ? `lines ${startLine}-${endLine}` : "start to end"}\n\nSearch Content:\n${searchChunk}${bestMatchSection}${originalContentSection}`,
+				error: `No sufficiently similar match found${lineRange} (${Math.floor(bestMatchScore * 100)}% similar, needs ${Math.floor(this.fuzzyThreshold * 100)}%)\n\nDebug Info:\n- Similarity Score: ${Math.floor(bestMatchScore * 100)}%\n- Required Threshold: ${Math.floor(this.fuzzyThreshold * 100)}%\n- Search Range: ${startLine && endLine ? `lines ${startLine}-${endLine}` : "start to end"}\n- Tip: Use read_file to get the latest content of the file before attempting the diff again, as the file content may have changed\n\nSearch Content:\n${searchChunk}${bestMatchSection}${originalContentSection}`,
 			}
 		}
 

@@ -95,4 +95,6 @@ const Thumbnails = ({ images, style, setImages, onHeightChange }: ThumbnailsProp
 	)
 }
 
+Thumbnails.displayName = "Thumbnails"
+
 export default memo(Thumbnails)

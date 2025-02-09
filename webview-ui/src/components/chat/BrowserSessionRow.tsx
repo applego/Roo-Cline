@@ -37,9 +37,9 @@ const BrowserSessionRow = memo((props: BrowserSessionRowProps) => {
 	const isLastApiReqInterrupted = useMemo(() => {
 		// Check if last api_req_started is cancelled
 		const lastApiReqStarted = [...messages].reverse().find((m) => m.say === "api_req_started")
-		if (lastApiReqStarted?.text != null) {
-			const info = JSON.parse(lastApiReqStarted.text)
-			if (info.cancelReason != null) {
+		if (lastApiReqStarted?.text) {
+			const info = JSON.parse(lastApiReqStarted.text) as { cancelReason: string | null }
+			if (info && info.cancelReason !== null) {
 				return true
 			}
 		}
@@ -242,7 +242,7 @@ const BrowserSessionRow = memo((props: BrowserSessionRowProps) => {
 						style={{ color: "var(--vscode-foreground)", marginBottom: "-1.5px" }}></span>
 				)}
 				<span style={{ fontWeight: "bold" }}>
-					<>Cline wants to use the browser:</>
+					<>Roo wants to use the browser:</>
 				</span>
 			</div>
 			<div
@@ -409,6 +409,8 @@ const BrowserSessionRow = memo((props: BrowserSessionRowProps) => {
 	return browserSessionRow
 }, deepEqual)
 
+BrowserSessionRow.displayName = "BrowserSessionRow"
+
 interface BrowserSessionRowContentProps extends Omit<BrowserSessionRowProps, "messages"> {
 	message: ClineMessage
 	setMaxActionHeight: (height: number) => void
@@ -494,6 +496,8 @@ const BrowserSessionRowContent = ({
 	}
 }
 
+BrowserSessionRowContent.displayName = "BrowserSessionRowContent"
+
 const BrowserActionBox = ({
 	action,
 	coordinate,
@@ -550,6 +554,8 @@ const BrowserActionBox = ({
 	)
 }
 
+BrowserActionBox.displayName = "BrowserActionBox"
+
 const BrowserCursor: React.FC<{ style?: React.CSSProperties }> = ({ style }) => {
 	// (can't use svgs in vsc extensions)
 	const cursorBase64 =
@@ -569,4 +575,6 @@ const BrowserCursor: React.FC<{ style?: React.CSSProperties }> = ({ style }) => 
 	)
 }
 
-export default BrowserSessionRow
+BrowserCursor.displayName = "BrowserCursor"
+
+export default memo(BrowserSessionRow)

@@ -1,5 +1,4 @@
 import { render, screen, fireEvent } from "@testing-library/react"
-import "@testing-library/jest-dom"
 import ApiConfigManager from "../ApiConfigManager"
 
 // Mock VSCode components
@@ -19,6 +18,20 @@ jest.mock("@vscode/webview-ui-toolkit/react", () => ({
 	),
 }))
 
+jest.mock("vscrui", () => ({
+	Dropdown: ({ id, value, onChange, options, role }: any) => (
+		<div data-testid={`mock-dropdown-${id}`}>
+			<select value={value} onChange={(e) => onChange({ value: e.target.value })} data-testid={id} role={role}>
+				{options.map((opt: any) => (
+					<option key={opt.value} value={opt.value}>
+						{opt.label}
+					</option>
+				))}
+			</select>
+		</div>
+	),
+}))
+
 describe("ApiConfigManager", () => {
 	const mockOnSelectConfig = jest.fn()
 	const mockOnDeleteConfig = jest.fn()
@@ -27,7 +40,10 @@ describe("ApiConfigManager", () => {
 
 	const defaultProps = {
 		currentApiConfigName: "Default Config",
-		listApiConfigMeta: [{ name: "Default Config" }, { name: "Another Config" }],
+		listApiConfigMeta: [
+			{ id: "default", name: "Default Config" },
+			{ id: "another", name: "Another Config" },
+		],
 		onSelectConfig: mockOnSelectConfig,
 		onDeleteConfig: mockOnDeleteConfig,
 		onRenameConfig: mockOnRenameConfig,
@@ -106,7 +122,7 @@ describe("ApiConfigManager", () => {
 	})
 
 	it("disables delete button when only one config exists", () => {
-		render(<ApiConfigManager {...defaultProps} listApiConfigMeta={[{ name: "Default Config" }]} />)
+		render(<ApiConfigManager {...defaultProps} listApiConfigMeta={[{ id: "default", name: "Default Config" }]} />)
 
 		const deleteButton = screen.getByTitle("Cannot delete the only profile")
 		expect(deleteButton).toHaveAttribute("disabled")
