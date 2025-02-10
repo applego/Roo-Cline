@@ -5,18 +5,18 @@
 		"moduleResolution": "NodeNext",
 		"lib": ["ES2022"],
 		"outDir": "dist",
-		"rootDir": "src",
+		"rootDir": ".",
 		"strict": true,
 		"esModuleInterop": true,
 		"skipLibCheck": true,
 		"forceConsistentCasingInFileNames": true,
 		"resolveJsonModule": true,
-		"baseUrl": "src",
+		"baseUrl": ".",
 		"paths": {
 			"@/*": ["./*"]
 		},
 		"types": ["node", "jest", "@testing-library/jest-dom"]
 	},
-	"include": ["src/**/*"],
+	"include": ["src/**/*", "server.ts"],
 	"exclude": ["node_modules", "dist"]
 }

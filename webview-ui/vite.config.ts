@@ -1,36 +1,68 @@
-import path from "path"
-
 import { defineConfig } from "vite"
 import react from "@vitejs/plugin-react"
-import tailwindcss from "@tailwindcss/vite"
+import { resolve } from "path"
 
 // https://vitejs.dev/config/
-export default defineConfig({
-	plugins: [react(), tailwindcss()],
-	resolve: {
-		alias: {
-			"@": path.resolve(__dirname, "./src"),
-		},
-	},
-	build: {
-		outDir: "build",
-		rollupOptions: {
-			output: {
-				entryFileNames: `assets/[name].js`,
-				chunkFileNames: `assets/[name].js`,
-				assetFileNames: `assets/[name].[ext]`,
+export default defineConfig(({ command, mode }) => {
+	const isDevelopment = mode === "development"
+
+	return {
+		plugins: [react()],
+
+		// 開発環境では '/'、本番環境では './' を使用
+		base: isDevelopment ? "/" : "./",
+
+		resolve: {
+			alias: {
+				"@": resolve(__dirname, "src"),
 			},
 		},
-	},
-	server: {
-		hmr: {
-			host: "localhost",
-			protocol: "ws",
+
+		server: {
+			port: 5173,
+			// 開発サーバーの設定
+			hmr: {
+				overlay: true,
+			},
+			// CORSの設定
+			cors: true,
 		},
-		cors: {
-			origin: "*",
-			methods: "*",
-			allowedHeaders: "*",
+
+		build: {
+			// 本番ビルドの設定
+			outDir: "dist",
+			assetsDir: "assets",
+			// チャンク分割を無効化（VS Code拡張用）
+			rollupOptions: {
+				output: {
+					manualChunks: undefined,
+				},
+			},
+			// ソースマップ
+			sourcemap: isDevelopment,
+			// 最小化
+			minify: !isDevelopment,
 		},
-	},
+
+		// 環境変数のプリフィックス
+		envPrefix: "VITE_",
+
+		// CSS Modules
+		css: {
+			modules: {
+				localsConvention: "camelCase",
+			},
+		},
+
+		// 最適化設定
+		optimizeDeps: {
+			include: ["react", "react-dom", "@vscode/webview-ui-toolkit/react"],
+		},
+
+		// TypeScript設定
+		esbuild: {
+			// JSX構文の変換設定
+			jsxInject: `import React from 'react'`,
+		},
+	}
 })

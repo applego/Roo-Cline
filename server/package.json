@@ -10,11 +10,16 @@
 		"dev": "ts-node-dev --respawn src/server.ts"
 	},
 	"dependencies": {
-		"@modelcontextprotocol/sdk": "^1.0.0",
+		"@modelcontextprotocol/sdk": "^1.4.1",
+		"cors": "^2.8.5",
+		"express": "^4.21.2",
+		"jest-mock": "^29.7.0",
 		"ws": "^8.0.0"
 	},
 	"devDependencies": {
 		"@testing-library/jest-dom": "^6.0.0",
+		"@types/cors": "^2.8.17",
+		"@types/express": "^5.0.0",
 		"@types/jest": "^29.0.0",
 		"@types/node": "^20.0.0",
 		"@types/testing-library__jest-dom": "^5.14.9",

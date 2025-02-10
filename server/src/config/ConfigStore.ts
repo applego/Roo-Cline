@@ -1,25 +1,33 @@
-import { promises as fs } from "fs"
+import fs from "fs/promises"
 import path from "path"
-import { RooConfig } from "../types/config"
+import { RooConfig } from "../types/config.js"
+
+const CONFIG_FILE = "config.json"
 
 export class ConfigStore {
-	readonly configPath: string
+	private configDir: string
 
 	constructor(configDir: string) {
-		this.configPath = path.join(configDir, "roo-config.json")
+		this.configDir = configDir
 	}
 
 	async load(): Promise<RooConfig> {
+		const configPath = path.join(this.configDir, CONFIG_FILE)
 		try {
-			const data = await fs.readFile(this.configPath, "utf-8")
+			const data = await fs.readFile(configPath, "utf8")
 			return JSON.parse(data)
-		} catch (error) {
-			return this.getDefaultConfig()
+		} catch (error: any) {
+			if (error.code === "ENOENT") {
+				console.warn(`Config file not found at ${configPath}, using default config`)
+				return this.getDefaultConfig()
+			}
+			throw error
 		}
 	}
 
 	async save(config: RooConfig): Promise<void> {
-		await fs.writeFile(this.configPath, JSON.stringify(config, null, 2))
+		const configPath = path.join(this.configDir, CONFIG_FILE)
+		await fs.writeFile(configPath, JSON.stringify(config, null, 2), "utf8")
 	}
 
 	getDefaultConfig(): RooConfig {
@@ -29,7 +37,7 @@ export class ConfigStore {
 			modePrompts: {},
 			apiConfig: {
 				default: {
-					provider: "openai",
+					provider: "",
 					apiKey: "",
 				},
 			},

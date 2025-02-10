@@ -1,13 +1,17 @@
 import path from "path"
+import { fileURLToPath } from "url"
 import express from "express"
 import cors from "cors"
-import { WebSocketServerImpl } from "./src/websocket/websocket-server"
-import { WebSocketMessage } from "./types"
-import { ConfigStore } from "./src/config/ConfigStore"
-import { McpManager } from "./src/mcp/McpManager"
+import { WebSocketServerImpl } from "./src/websocket/websocket-server.js"
+import { WebSocketMessage, WebSocketConnection } from "./src/types.js"
+import { ConfigStore } from "./src/config/ConfigStore.js"
+import { McpManager } from "./src/mcp/McpManager.js"
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 const app = express()
-const port = process.env.PORT ? parseInt(process.env.PORT) : 3000
+const port = process.env.PORT ? parseInt(process.env.PORT) : 3002 // Changed to 3002
 const wsPort = process.env.WS_PORT ? parseInt(process.env.WS_PORT) : 3001
 const CONFIG_DIR = process.env.CONFIG_DIR || path.join(__dirname, "config")
 
@@ -29,7 +33,7 @@ const wss = new WebSocketServerImpl(wsPort, configStore, mcpManager)
 console.log(`WebSocket server started on port ${wsPort}`)
 
 // クライアントからのメッセージを処理
-wss.onMessage(async (message: WebSocketMessage, connection) => {
+wss.onMessage(async (message: WebSocketMessage, connection: WebSocketConnection) => {
 	try {
 		switch (message.type) {
 			case "getConfig":
@@ -77,7 +81,7 @@ wss.onMessage(async (message: WebSocketMessage, connection) => {
 			default:
 				console.warn("Unknown message type:", message.type)
 		}
-	} catch (error) {
+	} catch (error: any) {
 		console.error("Error handling message:", error)
 		connection.send({
 			type: "error",
@@ -87,7 +91,7 @@ wss.onMessage(async (message: WebSocketMessage, connection) => {
 })
 
 // WebSocket接続のハンドリング
-wss.onConnection((connection) => {
+wss.onConnection((connection: WebSocketConnection) => {
 	console.log(`New WebSocket connection: ${connection.id}`)
 })
 
