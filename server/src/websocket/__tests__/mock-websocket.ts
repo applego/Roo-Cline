@@ -1,37 +1,25 @@
-import { WebSocket, WebSocketServer } from "ws"
-import { EventEmitter } from "events"
+import { Mock } from "jest-mock"
 
-export class MockWebSocket extends EventEmitter {
-	public readyState: number
-	public send: jest.Mock
-	public static readonly OPEN = 1
-	public static readonly CLOSED = 3
+class MockWebSocket {
+	static readonly CONNECTING = 0
+	static readonly OPEN = 1
+	static readonly CLOSING = 2
+	static readonly CLOSED = 3
 
-	constructor() {
-		super()
-		this.readyState = MockWebSocket.OPEN
-		this.send = jest.fn()
-	}
+	readyState: number = MockWebSocket.CLOSED
+	onopen: (() => void) | null = null
+	onmessage: ((event: { data: any }) => void) | null = null
+	onclose: (() => void) | null = null
+	onerror: (() => void) | null = null
+
+	constructor(public url: string) {}
+
+	send(data: any) {}
+	close() {}
 }
 
-export class MockWebSocketServer extends EventEmitter {
-	public clients: Set<MockWebSocket>
-	public close: jest.Mock
-
-	constructor() {
-		super()
-		this.clients = new Set()
-		this.close = jest.fn()
-	}
-
-	addClient(client: MockWebSocket) {
-		this.clients.add(client)
-		this.emit("connection", client)
-	}
-}
-
-export const mockWebSocket = jest.fn().mockImplementation(() => new MockWebSocket())
+const mockWebSocket: any = MockWebSocket
 mockWebSocket.OPEN = MockWebSocket.OPEN
 mockWebSocket.CLOSED = MockWebSocket.CLOSED
 
-export const mockWebSocketServer = jest.fn().mockImplementation(() => new MockWebSocketServer())
+export default mockWebSocket

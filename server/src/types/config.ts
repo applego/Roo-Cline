@@ -1,4 +1,4 @@
-import { McpServerConfig } from "./mcp"
+import { McpServerConfig } from "./mcp.js"
 
 export interface RooConfig {
 	preferredLanguage: string

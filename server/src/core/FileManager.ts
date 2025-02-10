@@ -7,7 +7,7 @@ import {
 	AccessDeniedError,
 	InvalidPathError,
 	FileSizeLimitError,
-} from "../types"
+} from "../types.js"
 
 export class FileManager {
 	private readonly MAX_FILE_SIZE = 10 * 1024 * 1024 // 10MB

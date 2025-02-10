@@ -1,0 +1,93 @@
+/* テーマの基本スタイル */
+:root {
+	--theme-primary: #007acc;
+	--theme-secondary: #6c757d;
+	--theme-background: #ffffff;
+	--theme-text: #000000;
+
+	/* VSCode互換のスタイル変数 */
+	--vscode-button-background: var(--theme-primary);
+	--vscode-button-foreground: var(--theme-text);
+	--vscode-button-secondaryBackground: var(--theme-secondary);
+	--vscode-editor-background: var(--theme-background);
+	--vscode-editor-foreground: var(--theme-text);
+}
+
+.theme {
+	min-height: 100vh;
+	display: flex;
+	flex-direction: column;
+	transition:
+		background-color 0.3s ease,
+		color 0.3s ease;
+}
+
+/* ライトテーマ */
+.theme-light {
+	background-color: var(--theme-background);
+	color: var(--theme-text);
+}
+
+/* ダークテーマ */
+.theme-dark {
+	background-color: var(--theme-background);
+	color: var(--theme-text);
+}
+
+/* チャットコンポーネントのスタイル */
+.chat-container {
+	background-color: var(--theme-background);
+	border: 1px solid var(--theme-secondary);
+	border-radius: 4px;
+	margin: 1rem;
+	padding: 1rem;
+}
+
+.message {
+	margin: 0.5rem 0;
+	padding: 0.5rem;
+	border-radius: 4px;
+}
+
+.message.user {
+	background-color: var(--theme-primary);
+	color: white;
+	margin-left: auto;
+	max-width: 80%;
+}
+
+.message.assistant {
+	background-color: var(--theme-secondary);
+	color: white;
+	margin-right: auto;
+	max-width: 80%;
+}
+
+.message-input {
+	background-color: var(--theme-background);
+	color: var(--theme-text);
+	border: 1px solid var(--theme-secondary);
+	border-radius: 4px;
+	padding: 0.5rem;
+	width: 100%;
+	margin-top: 1rem;
+}
+
+.send-button {
+	background-color: var(--theme-primary);
+	color: white;
+	border: none;
+	border-radius: 4px;
+	padding: 0.5rem 1rem;
+	margin-left: 0.5rem;
+	cursor: pointer;
+	transition: background-color 0.2s ease;
+}
+
+.send-button:hover {
+	background-color: color-mix(in srgb, var(--theme-primary) 80%, white);
+}
+
+.send-button:active {
+	background-color: color-mix(in srgb, var(--theme-primary) 60%, black);
+}

@@ -1,10 +1,10 @@
 import { WebSocket, WebSocketServer as WSServer } from "ws"
 import { v4 as uuidv4 } from "uuid"
-import { WebSocketMessage, WebSocketServer, WebSocketConnection, MessageHandler } from "../types"
-import { ConfigStore } from "../config/ConfigStore"
-import { McpManager } from "../mcp/McpManager"
-import { MessageRouter } from "./message-handler"
-import { RateLimiter } from "../utils/rate-limiter"
+import { WebSocketMessage, WebSocketServer, WebSocketConnection, MessageHandler } from "../types.js"
+import { ConfigStore } from "../config/ConfigStore.js"
+import { McpManager } from "../mcp/McpManager.js"
+import { MessageRouter } from "./message-handler.js"
+import { RateLimiter } from "../utils/rate-limiter.js"
 
 export class WebSocketServerImpl implements WebSocketServer {
 	private wss: WSServer

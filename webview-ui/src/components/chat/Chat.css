@@ -1,0 +1,75 @@
+.chat-container {
+	display: flex;
+	flex-direction: column;
+	height: 100vh;
+	padding: 1rem;
+	box-sizing: border-box;
+}
+
+.chat-messages {
+	flex: 1;
+	overflow-y: auto;
+	margin-bottom: 1rem;
+	padding: 1rem;
+	border-radius: 0.5rem;
+	background-color: var(--vscode-editor-background, #1e1e1e);
+}
+
+.chat-message {
+	margin-bottom: 1rem;
+	padding: 0.75rem;
+	border-radius: 0.5rem;
+	max-width: 80%;
+}
+
+.chat-message.user {
+	margin-left: auto;
+	background-color: var(--vscode-button-background, #0066b8);
+	color: var(--vscode-button-foreground, #ffffff);
+}
+
+.chat-message.assistant {
+	margin-right: auto;
+	background-color: var(--vscode-editor-inactiveSelectionBackground, #3a3d41);
+	color: var(--vscode-editor-foreground, #d4d4d4);
+}
+
+.chat-message.system {
+	margin: 1rem auto;
+	background-color: var(--vscode-editorInfo-background, #063b49);
+	color: var(--vscode-editor-foreground, #d4d4d4);
+	font-style: italic;
+}
+
+.message-content {
+	word-break: break-word;
+	line-height: 1.4;
+}
+
+.chat-loading {
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	padding: 1rem;
+	color: var(--vscode-editor-foreground, #d4d4d4);
+	font-style: italic;
+}
+
+/* ダークモード対応 */
+@media (prefers-color-scheme: dark) {
+	.chat-container {
+		background-color: #1e1e1e;
+	}
+
+	.chat-message.user {
+		background-color: #2b5c8f;
+	}
+
+	.chat-message.assistant {
+		background-color: #2d2d2d;
+	}
+
+	.chat-message.system {
+		background-color: #1c4c5e;
+	}
+}

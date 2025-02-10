@@ -1,39 +1,18 @@
-import { ExtensionMessage, ExtensionState } from "../../../src/shared/ExtensionMessage"
-import { WebviewMessage } from "../services/api/types"
-
-// ExtensionMessageの型を拡張してスタンドアロンモード用のメッセージタイプを追加
-export type StandaloneMessageType = ExtensionMessage["type"] | "upsertApiConfiguration"
-
-// スタンドアロンモード用のメッセージ型
-export interface StandaloneMessage extends Omit<ExtensionMessage, "type"> {
-	type: StandaloneMessageType
-	apiConfiguration?: any
-	state?: ExtensionState
+export interface ClineMessage {
+	role: "user" | "assistant" | "system"
+	content: string
+	timestamp?: string
 }
 
-// WebSocketハンドラーで使用するメッセージ型
-export interface EnhancedWebviewMessage extends Omit<WebviewMessage, "type"> {
-	type: StandaloneMessageType
-	state?: ExtensionState
-	apiConfiguration?: any
+export interface UserMessage {
+	type: "user-message"
+	message: string
 }
 
-// WebviewMessage型をEnhancedWebviewMessageに変換する
-export function convertToEnhancedWebviewMessage(message: WebviewMessage): EnhancedWebviewMessage {
-	return {
-		...message,
-		type: message.type as StandaloneMessageType,
-	}
+export interface VSCodeMessage {
+	command: string
+	text?: string
+	html?: string
 }
 
-// StandaloneMessage型をWebviewMessage型に変換する
-export function convertToWebviewMessage(message: StandaloneMessage): WebviewMessage {
-	const { type, text, state, apiConfiguration, ...rest } = message
-	return {
-		type,
-		text,
-		state,
-		apiConfiguration,
-		...rest,
-	}
-}
+export type WebviewMessage = UserMessage | VSCodeMessage
